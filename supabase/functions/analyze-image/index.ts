@@ -134,11 +134,20 @@ serve(async (req) => {
     let detectedContent: DetectedContent[];
     
     try {
+      // Clean the response - remove markdown code blocks if present
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\n?/, '').replace(/\n?```$/, '');
+      }
+      
       // Try to parse the JSON response
-      const parsed = JSON.parse(content);
+      const parsed = JSON.parse(cleanContent);
       detectedContent = Array.isArray(parsed) ? parsed : [parsed];
     } catch (parseError) {
       console.error('Failed to parse OpenAI response as JSON:', parseError);
+      console.error('Raw content:', content);
       // Return empty array if parsing fails
       detectedContent = [];
     }
