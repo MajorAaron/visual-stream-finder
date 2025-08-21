@@ -1,5 +1,6 @@
-// Mock AI analysis service - in production this would integrate with actual AI APIs
+// Real AI analysis service using OpenAI Vision API via Supabase Edge Function
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DetectedContent {
   title: string;
@@ -79,19 +80,40 @@ const mockResults: DetectedContent[] = [
 
 export class AIAnalysisService {
   static async analyzeImage(file: File): Promise<DetectedContent[]> {
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
     try {
-      // In production, this would:
-      // 1. Upload image to AI vision service
-      // 2. Extract text/objects from image
-      // 3. Match against movie/TV databases
-      // 4. Find streaming sources via APIs
-      
-      // For now, return mock results
-      return mockResults;
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data:image/...;base64, prefix
+          const base64String = result.split(',')[1];
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('analyze-image', {
+        body: { imageBase64: base64 }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error('Failed to analyze image. Please try again.');
+        throw error;
+      }
+
+      if (data.error) {
+        console.error('AI analysis error:', data.error);
+        toast.error('Failed to analyze image. Please try again.');
+        throw new Error(data.error);
+      }
+
+      return data.results || [];
     } catch (error) {
+      console.error('Analysis failed:', error);
       toast.error('Failed to analyze image. Please try again.');
       throw error;
     }
