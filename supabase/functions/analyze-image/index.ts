@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const tmdbApiKey = Deno.env.get('TMDB_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,6 +29,37 @@ interface StreamingSource {
   type: 'subscription' | 'rent' | 'buy' | 'free';
   price?: string;
 }
+
+// Fetch poster from TMDB API
+const fetchPosterFromTMDB = async (title: string, year: number, type: 'movie' | 'tv' | 'documentary'): Promise<string> => {
+  try {
+    console.log(`Searching TMDB for: ${title} (${year})`);
+    
+    // Search for the title on TMDB
+    const searchType = type === 'movie' ? 'movie' : 'tv';
+    const searchUrl = `https://api.themoviedb.org/3/search/${searchType}?api_key=${tmdbApiKey}&query=${encodeURIComponent(title)}&year=${year}`;
+    
+    const searchResponse = await fetch(searchUrl);
+    const searchData = await searchResponse.json();
+    
+    if (searchData.results && searchData.results.length > 0) {
+      const result = searchData.results[0];
+      const posterPath = result.poster_path;
+      
+      if (posterPath) {
+        const fullPosterUrl = `https://image.tmdb.org/t/p/w500${posterPath}`;
+        console.log(`Found TMDB poster: ${fullPosterUrl}`);
+        return fullPosterUrl;
+      }
+    }
+    
+    console.log(`No TMDB poster found for ${title}`);
+    return "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop";
+  } catch (error) {
+    console.error('Error fetching TMDB poster:', error);
+    return "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop";
+  }
+};
 
 // Fallback streaming sources
 const getStreamingSources = (title: string): StreamingSource[] => [
@@ -152,11 +184,14 @@ serve(async (req) => {
       detectedContent = [];
     }
 
-    // Add streaming sources to each detected item
-    const results = detectedContent.map(item => ({
-      ...item,
-      poster: item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop",
-      streamingSources: getStreamingSources(item.title)
+    // Add streaming sources and fetch real posters for each detected item
+    const results = await Promise.all(detectedContent.map(async (item) => {
+      const poster = await fetchPosterFromTMDB(item.title, item.year, item.type);
+      return {
+        ...item,
+        poster,
+        streamingSources: getStreamingSources(item.title)
+      };
     }));
 
     console.log('Final results:', results);
