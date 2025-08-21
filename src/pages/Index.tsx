@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { ImageUpload } from '@/components/ImageUpload';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
 import { AIAnalysisService } from '@/utils/aiAnalysis';
+import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Tv, Smartphone } from 'lucide-react';
 
@@ -23,10 +26,25 @@ interface DetectedContent {
 }
 
 const Index = () => {
+  const { user, loading, signOut } = useAuth();
   const [appState, setAppState] = useState<AppState>('upload');
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('analyzing');
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<DetectedContent[]>([]);
+
+  // Show loading screen while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Redirect to auth if not logged in
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
 
   const handleImageUpload = async (file: File) => {
     setAppState('analyzing');
@@ -71,47 +89,66 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen py-8 px-4">
-      <div className="container mx-auto max-w-4xl space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+      {/* Header with user info and sign out */}
+      <header className="border-b bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-primary">AI Watchlist</h1>
+            <p className="text-sm text-muted-foreground">
+              Welcome back, {user.user_metadata?.full_name || user.email}!
+            </p>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
-            AI Watchlist
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Upload any image of a TV screen or movie search and instantly discover where to watch it
-          </p>
+          <Button onClick={signOut} variant="outline">
+            Sign Out
+          </Button>
         </div>
+      </header>
 
-        {/* How it works */}
+      {/* Main content */}
+      <div className="container mx-auto px-4 py-8">
         {appState === 'upload' && (
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card className="p-6 text-center">
-              <Smartphone className="w-8 h-8 text-primary mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">1. Upload Image</h3>
-              <p className="text-sm text-muted-foreground">
-                Take a photo of your TV or screenshot from your phone
+          <div className="space-y-8">
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-primary mb-4">
+                Discover What to Watch
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Upload any image or screenshot and let AI identify movies and TV shows, 
+                then find where to watch them instantly.
               </p>
-            </Card>
-            <Card className="p-6 text-center">
-              <Sparkles className="w-8 h-8 text-primary mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">2. AI Analysis</h3>
-              <p className="text-sm text-muted-foreground">
-                Our AI identifies movies and shows in your image
-              </p>
-            </Card>
-            <Card className="p-6 text-center">
-              <Tv className="w-8 h-8 text-primary mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">3. Find Streams</h3>
-              <p className="text-sm text-muted-foreground">
-                Get direct links to watch on all platforms
-              </p>
-            </Card>
+            </div>
+
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
+              <div className="text-center p-6 bg-card rounded-lg">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-primary font-bold">1</span>
+                </div>
+                <h3 className="font-semibold mb-2">Upload Image</h3>
+                <p className="text-sm text-muted-foreground">
+                  Drop any image containing movies or TV shows
+                </p>
+              </div>
+              <div className="text-center p-6 bg-card rounded-lg">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-primary font-bold">2</span>
+                </div>
+                <h3 className="font-semibold mb-2">AI Analysis</h3>
+                <p className="text-sm text-muted-foreground">
+                  Our AI identifies and analyzes the content
+                </p>
+              </div>
+              <div className="text-center p-6 bg-card rounded-lg">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-primary font-bold">3</span>
+                </div>
+                <h3 className="font-semibold mb-2">Find Streams</h3>
+                <p className="text-sm text-muted-foreground">
+                  Get direct links to streaming platforms
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -129,11 +166,10 @@ const Index = () => {
             <ResultsDisplay results={results} onNewSearch={handleNewSearch} />
           )}
         </div>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground">
-          <p>Powered by advanced AI image recognition and real-time streaming data</p>
-        </div>
+        
+        <footer className="text-center mt-16 text-sm text-muted-foreground">
+          <p>Powered by OpenAI Vision API & TMDB</p>
+        </footer>
       </div>
     </div>
   );
