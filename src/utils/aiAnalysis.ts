@@ -1,8 +1,9 @@
 // Real AI analysis service using OpenAI Vision API via Supabase Edge Function
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
-interface DetectedContent {
+export interface DetectedContent {
   title: string;
   year: number;
   type: 'movie' | 'tv' | 'documentary';

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ImageUpload } from '@/components/ImageUpload';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -99,9 +99,14 @@ const Index = () => {
               Welcome back, {user.user_metadata?.full_name || user.email}!
             </p>
           </div>
-          <Button onClick={signOut} variant="outline">
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button asChild variant="outline">
+              <Link to="/watchlist">My Watchlist</Link>
+            </Button>
+            <Button onClick={signOut} variant="outline">
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 

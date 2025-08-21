@@ -41,6 +41,57 @@ export type Database = {
         }
         Relationships: []
       }
+      watchlist: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          genre: string[]
+          id: string
+          plot: string | null
+          poster: string | null
+          rating: number | null
+          runtime: string | null
+          streaming_sources: Json | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          genre?: string[]
+          id?: string
+          plot?: string | null
+          poster?: string | null
+          rating?: number | null
+          runtime?: string | null
+          streaming_sources?: Json | null
+          title: string
+          type: string
+          updated_at?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          genre?: string[]
+          id?: string
+          plot?: string | null
+          poster?: string | null
+          rating?: number | null
+          runtime?: string | null
+          streaming_sources?: Json | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

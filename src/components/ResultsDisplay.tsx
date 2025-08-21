@@ -1,7 +1,11 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Star, Calendar, Clock } from 'lucide-react';
+import { ExternalLink, Star, Clock, Calendar, Bookmark, BookmarkCheck } from 'lucide-react';
+import { WatchlistService } from '@/utils/watchlistService';
+import { useToast } from '@/components/ui/use-toast';
+import { DetectedContent } from '@/utils/aiAnalysis';
 
 interface StreamingSource {
   name: string;
@@ -9,19 +13,6 @@ interface StreamingSource {
   url: string;
   type: 'subscription' | 'rent' | 'buy' | 'free';
   price?: string;
-}
-
-interface DetectedContent {
-  title: string;
-  year: number;
-  type: 'movie' | 'tv' | 'documentary';
-  genre: string[];
-  rating: number;
-  runtime?: string;
-  plot: string;
-  poster: string;
-  streamingSources: StreamingSource[];
-  confidence: number;
 }
 
 interface ResultsDisplayProps {
@@ -43,6 +34,67 @@ const sourceTypeColors = {
 };
 
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
+  const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
+
+  // Check which items are already in watchlist
+  useEffect(() => {
+    const checkSavedItems = async () => {
+      const saved = new Set<string>();
+      for (const item of results) {
+        const isInWatchlist = await WatchlistService.isInWatchlist(item.title, item.year);
+        if (isInWatchlist) {
+          saved.add(`${item.title}-${item.year}`);
+        }
+      }
+      setSavedItems(saved);
+    };
+    
+    checkSavedItems();
+  }, [results]);
+
+  const handleSaveToWatchlist = async (item: DetectedContent) => {
+    const key = `${item.title}-${item.year}`;
+    const isCurrentlySaved = savedItems.has(key);
+    
+    if (isCurrentlySaved) {
+      // Remove from watchlist
+      const { success, error } = await WatchlistService.removeFromWatchlist(item.title, item.year);
+      if (success) {
+        setSavedItems(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(key);
+          return newSet;
+        });
+        toast({
+          title: "Removed from Watchlist",
+          description: `${item.title} has been removed from your watchlist.`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error || "Failed to remove from watchlist",
+          variant: "destructive",
+        });
+      }
+    } else {
+      // Add to watchlist
+      const { success, error } = await WatchlistService.addToWatchlist(item);
+      if (success) {
+        setSavedItems(prev => new Set(prev).add(key));
+        toast({
+          title: "Added to Watchlist",
+          description: `${item.title} has been saved to your watchlist.`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error || "Failed to add to watchlist",
+          variant: "destructive",
+        });
+      }
+    }
+  };
   return (
     <div className="space-y-6">
       <div className="text-center space-y-2">
@@ -98,10 +150,31 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                     ))}
                   </div>
                 </div>
+                
+                <p className="text-muted-foreground line-clamp-3">{content.plot}</p>
+                
+                {/* Save to Watchlist Button */}
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    onClick={() => handleSaveToWatchlist(content)}
+                    variant={savedItems.has(`${content.title}-${content.year}`) ? "default" : "outline"}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    {savedItems.has(`${content.title}-${content.year}`) ? (
+                      <>
+                        <BookmarkCheck className="w-4 h-4" />
+                        Saved
+                      </>
+                    ) : (
+                      <>
+                        <Bookmark className="w-4 h-4" />
+                        Save to Watchlist
+                      </>
+                    )}
+                  </Button>
+                </div>
 
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {content.plot}
-                </p>
 
                 <div className="space-y-3">
                   <h4 className="font-semibold">Available on:</h4>
