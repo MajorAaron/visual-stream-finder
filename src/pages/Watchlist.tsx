@@ -36,26 +36,26 @@ export default function Watchlist() {
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Link to="/">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Search
               </Button>
             </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-primary">My Watchlist</h1>
-              <p className="text-sm text-muted-foreground">
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <h1 className="text-xl sm:text-2xl font-bold text-primary">My Watchlist</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {watchlist.length} saved items
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">
               {user?.user_metadata?.full_name || user?.email}
             </p>
-            <Button onClick={signOut} variant="outline" size="sm">
+            <Button onClick={signOut} variant="outline" size="sm" className="flex-shrink-0">
               Sign Out
             </Button>
           </div>
@@ -63,14 +63,14 @@ export default function Watchlist() {
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6">
         {watchlist.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Star className="w-8 h-8 text-primary" />
+          <div className="text-center py-12 sm:py-16 px-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Star className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Your watchlist is empty</h2>
-            <p className="text-muted-foreground mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">Your watchlist is empty</h2>
+            <p className="text-muted-foreground mb-6 text-sm sm:text-base">
               Start discovering movies and TV shows to build your personal watchlist
             </p>
             <Link to="/">
@@ -80,9 +80,9 @@ export default function Watchlist() {
             </Link>
           </div>
         ) : (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-3 sm:gap-4 lg:gap-6 space-y-3 sm:space-y-4 lg:space-y-6">
             {watchlist.map((item) => (
-              <Card key={item.id} className="overflow-hidden break-inside-avoid mb-4 sm:mb-6">
+              <Card key={item.id} className="overflow-hidden break-inside-avoid mb-3 sm:mb-4 lg:mb-6">
                 <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
                   <img
                     src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
@@ -90,7 +90,7 @@ export default function Watchlist() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <CardContent className="p-4 sm:p-6">
+                <CardContent className="p-3 sm:p-4 lg:p-6">
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
