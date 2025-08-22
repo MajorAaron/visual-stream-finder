@@ -95,24 +95,26 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       {/* Header with user info and sign out */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-primary">AI Watchlist</h1>
-            <p className="text-sm text-muted-foreground">
-              Welcome back, {user.user_metadata?.full_name || user.email}!
-            </p>
-          </div>
-            <div className="flex items-center gap-4">
-              <Button asChild variant="outline">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-primary">AI Watchlist</h1>
+              <p className="text-sm text-muted-foreground">
+                Welcome back, {user.user_metadata?.full_name || user.email}!
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+              <Button asChild variant="outline" size="sm">
                 <Link to="/watchlist">My Watchlist</Link>
               </Button>
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" size="sm">
                 <Link to="/watched">Watched</Link>
               </Button>
-              <Button onClick={signOut} variant="outline">
+              <Button onClick={signOut} variant="outline" size="sm">
                 Sign Out
               </Button>
             </div>
+          </div>
         </div>
       </header>
 
