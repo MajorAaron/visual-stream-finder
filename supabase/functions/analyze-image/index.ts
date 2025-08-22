@@ -61,6 +61,86 @@ const fetchPosterFromTMDB = async (title: string, year: number, type: 'movie' | 
   }
 };
 
+// Fetch real streaming data from Streaming Availability API
+const fetchStreamingData = async (title: string, year: number, type: 'movie' | 'tv' | 'documentary'): Promise<StreamingSource[]> => {
+  const streamingApiKey = Deno.env.get('STREAMING_AVAILABILITY_API_KEY');
+  if (!streamingApiKey) {
+    console.error('Streaming Availability API key not found');
+    return getStreamingSources(title);
+  }
+
+  try {
+    // Search for the title using the shows/search/title endpoint
+    const searchType = type === 'tv' ? 'series' : 'movie';
+    const searchUrl = `https://streaming-availability.p.rapidapi.com/shows/search/title?title=${encodeURIComponent(title)}&country=us&show_type=${searchType}&output_language=en`;
+    
+    console.log(`Searching Streaming Availability for: ${title} (${year}) as ${searchType}`);
+    
+    const searchResponse = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': streamingApiKey,
+        'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
+      }
+    });
+
+    if (!searchResponse.ok) {
+      console.error('Streaming API search failed:', searchResponse.status, await searchResponse.text());
+      return getStreamingSources(title);
+    }
+
+    const searchData = await searchResponse.json();
+    console.log(`Streaming API found ${searchData?.length || 0} results for ${title}`);
+
+    // Find the matching title and year
+    let matchedShow = null;
+    if (searchData && searchData.length > 0) {
+      matchedShow = searchData.find((show: any) => {
+        const showYear = show.firstAirYear || show.releaseYear;
+        return Math.abs(showYear - year) <= 1; // Allow 1 year difference
+      }) || searchData[0]; // Fallback to first result
+    }
+
+    if (!matchedShow) {
+      console.log('No matching show found, using fallback');
+      return getStreamingSources(title);
+    }
+
+    console.log(`Found matching show: ${matchedShow.title} (${matchedShow.releaseYear || matchedShow.firstAirYear})`);
+
+    // Extract streaming sources from the matched show
+    const streamingSources: StreamingSource[] = [];
+    
+    if (matchedShow.streamingOptions && matchedShow.streamingOptions.us) {
+      for (const option of matchedShow.streamingOptions.us) {
+        const service = option.service;
+        const streamingSource: StreamingSource = {
+          name: service.name,
+          logo: service.imageSet?.lightThemeImage || `https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop`,
+          url: option.link,
+          type: option.type === 'subscription' ? 'subscription' : 
+                option.type === 'rent' ? 'rent' : 
+                option.type === 'buy' ? 'buy' : 'free',
+          price: option.price ? `$${option.price.amount}` : undefined
+        };
+        streamingSources.push(streamingSource);
+      }
+    }
+
+    if (streamingSources.length > 0) {
+      console.log(`Found ${streamingSources.length} real streaming sources for ${title}`);
+      return streamingSources;
+    }
+
+  } catch (error) {
+    console.error('Error fetching streaming data:', error);
+  }
+
+  // Fallback to mock data
+  console.log('Using fallback streaming sources');
+  return getStreamingSources(title);
+};
+
 // Fallback streaming sources
 const getStreamingSources = (title: string): StreamingSource[] => [
   {
@@ -193,11 +273,14 @@ serve(async (req) => {
 
     // Add streaming sources and fetch real posters for each detected item
     const results = await Promise.all(detectedContent.map(async (item) => {
-      const poster = await fetchPosterFromTMDB(item.title, item.year, item.type);
+      const [poster, streamingSources] = await Promise.all([
+        fetchPosterFromTMDB(item.title, item.year, item.type),
+        fetchStreamingData(item.title, item.year, item.type)
+      ]);
       return {
         ...item,
         poster,
-        streamingSources: getStreamingSources(item.title)
+        streamingSources
       };
     }));
 
