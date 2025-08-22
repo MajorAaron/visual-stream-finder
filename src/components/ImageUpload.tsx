@@ -13,9 +13,39 @@ interface ImageUploadProps {
 export const ImageUpload = ({ onImageUpload, isLoading }: ImageUploadProps) => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    // Handle rejected files
+    if (rejectedFiles.length > 0) {
+      const rejectedFile = rejectedFiles[0];
+      const errors = rejectedFile.errors;
+      
+      if (errors.some((e: any) => e.code === 'file-too-large')) {
+        toast.error('File too large. Maximum size is 10MB.');
+        return;
+      }
+      if (errors.some((e: any) => e.code === 'file-invalid-type')) {
+        toast.error('Invalid file type. Please upload JPEG, PNG, or WebP images only.');
+        return;
+      }
+      toast.error('File upload failed. Please try again.');
+      return;
+    }
+
     const file = acceptedFiles[0];
     if (file) {
+      // Additional client-side validation
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        toast.error('File too large. Maximum size is 10MB.');
+        return;
+      }
+
+      // Validate file type more strictly
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Please upload JPEG, PNG, or WebP images only.');
+        return;
+      }
+
       // Create preview
       const reader = new FileReader();
       reader.onload = () => {
@@ -31,10 +61,14 @@ export const ImageUpload = ({ onImageUpload, isLoading }: ImageUploadProps) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+      'image/jpeg': ['.jpeg', '.jpg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp']
     },
     multiple: false,
-    disabled: isLoading
+    disabled: isLoading,
+    maxSize: 10 * 1024 * 1024, // 10MB
+    maxFiles: 1
   });
 
   const clearImage = () => {

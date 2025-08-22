@@ -175,10 +175,32 @@ serve(async (req) => {
   }
 
   try {
+    // Server-side validation
+    const contentLength = req.headers.get('content-length');
+    if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+      console.error('Request too large:', contentLength);
+      return new Response(JSON.stringify({ error: 'File too large. Maximum size is 10MB.' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { imageBase64 } = await req.json();
 
-    if (!imageBase64) {
-      throw new Error('No image provided');
+    // Validate image data
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return new Response(JSON.stringify({ error: 'Invalid image data provided.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Basic validation of base64 image format
+    if (imageBase64.length > 14 * 1024 * 1024) { // ~10MB when base64 encoded
+      return new Response(JSON.stringify({ error: 'Image too large. Maximum size is 10MB.' }), {
+        status: 413,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log('Analyzing image with OpenAI Vision API...');
