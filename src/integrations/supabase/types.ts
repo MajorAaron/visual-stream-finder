@@ -57,6 +57,7 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          watched: boolean
           year: number
           youtube_url: string | null
         }
@@ -75,6 +76,7 @@ export type Database = {
           type: string
           updated_at?: string
           user_id: string
+          watched?: boolean
           year: number
           youtube_url?: string | null
         }
@@ -93,6 +95,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          watched?: boolean
           year?: number
           youtube_url?: string | null
         }

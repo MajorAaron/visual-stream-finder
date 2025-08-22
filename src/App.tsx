@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Watchlist from "./pages/Watchlist";
+import Watched from "./pages/Watched";
 import NotFound from "./pages/NotFound";
 import "./App.css";
 
@@ -17,6 +18,7 @@ function App() {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/watched" element={<Watched />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />

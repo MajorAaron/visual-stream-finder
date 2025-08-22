@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Star, Clock, Calendar, ArrowLeft, Trash2 } from 'lucide-react';
-import { useWatchlist } from '@/hooks/useWatchlist';
+import { ExternalLink, Star, Clock, Calendar, ArrowLeft, Trash2, RotateCcw } from 'lucide-react';
+import { useWatchedItems } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
 
 const typeColors = {
@@ -20,9 +20,9 @@ const sourceTypeColors = {
   free: "bg-blue-500/20 text-blue-400 border-blue-500/30"
 };
 
-export default function Watchlist() {
+export default function Watched() {
   const { user, signOut } = useAuth();
-  const { watchlist, loading, removeFromWatchlist, markAsWatched } = useWatchlist();
+  const { watchedItems, loading, markAsUnwatched, removeFromWatchlist } = useWatchedItems();
 
   if (loading) {
     return (
@@ -45,16 +45,16 @@ export default function Watchlist() {
               </Button>
             </Link>
             <div className="min-w-0 flex-1 sm:flex-none">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary">My Watchlist</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-primary">Watched</h1>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {watchlist.length} saved items
+                {watchedItems.length} watched items
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
-            <Link to="/watched">
+            <Link to="/watchlist">
               <Button variant="outline" size="sm">
-                Watched
+                My Watchlist
               </Button>
             </Link>
             <p className="text-xs sm:text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">
@@ -69,24 +69,24 @@ export default function Watchlist() {
 
       {/* Main content */}
       <div className="px-2 sm:px-3 py-2 sm:py-3">
-        {watchlist.length === 0 ? (
+        {watchedItems.length === 0 ? (
           <div className="text-center py-12 sm:py-16 px-4">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Star className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">Your watchlist is empty</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">No watched items yet</h2>
             <p className="text-muted-foreground mb-6 text-sm sm:text-base">
-              Start discovering movies and TV shows to build your personal watchlist
+              Items you mark as watched will appear here
             </p>
-            <Link to="/">
+            <Link to="/watchlist">
               <Button>
-                Start Analyzing Images
+                Go to Watchlist
               </Button>
             </Link>
           </div>
         ) : (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-2 sm:gap-3 space-y-2 sm:space-y-3">
-            {watchlist.map((item) => (
+            {watchedItems.map((item) => (
               <Card key={item.id} className="overflow-hidden break-inside-avoid mb-2 sm:mb-3">
                 <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
                   <img
@@ -206,15 +206,15 @@ export default function Watchlist() {
                       )}
                     </div>
 
-                    {/* Mark as Watched button */}
+                    {/* Mark as Unwatched button */}
                     <Button
-                      onClick={() => markAsWatched(item.title, item.year)}
+                      onClick={() => markAsUnwatched(item.title, item.year)}
                       variant="outline"
                       size="sm"
-                      className="w-full text-green-500 hover:text-green-600 hover:bg-green-50 h-10 sm:h-9 mb-2"
+                      className="w-full text-blue-500 hover:text-blue-600 hover:bg-blue-50 h-10 sm:h-9 mb-2"
                     >
-                      <Star className="w-4 h-4 mr-2" />
-                      Mark as Watched
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Mark as Unwatched
                     </Button>
 
                     {/* Remove button */}
@@ -225,7 +225,7 @@ export default function Watchlist() {
                       className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 h-10 sm:h-9"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Remove from Watchlist
+                      Remove Permanently
                     </Button>
 
                     {item.confidence && (

@@ -102,14 +102,17 @@ const Index = () => {
               Welcome back, {user.user_metadata?.full_name || user.email}!
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Button asChild variant="outline">
-              <Link to="/watchlist">My Watchlist</Link>
-            </Button>
-            <Button onClick={signOut} variant="outline">
-              Sign Out
-            </Button>
-          </div>
+            <div className="flex items-center gap-4">
+              <Button asChild variant="outline">
+                <Link to="/watchlist">My Watchlist</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/watched">Watched</Link>
+              </Button>
+              <Button onClick={signOut} variant="outline">
+                Sign Out
+              </Button>
+            </div>
         </div>
       </header>
 

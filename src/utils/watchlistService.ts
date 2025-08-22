@@ -18,6 +18,7 @@ export interface WatchlistItem {
   updated_at: string;
   youtube_url?: string;
   channel_name?: string;
+  watched: boolean;
 }
 
 export class WatchlistService {
@@ -37,6 +38,7 @@ export class WatchlistService {
           streaming_sources: content.streamingSources as any,
           confidence: content.confidence,
           user_id: (await supabase.auth.getUser()).data.user?.id,
+          watched: false,
           ...(content.type === 'youtube' && {
             youtube_url: content.youtubeUrl,
             channel_name: content.channelName
@@ -80,6 +82,7 @@ export class WatchlistService {
       const { data, error } = await supabase
         .from('watchlist')
         .select('*')
+        .eq('watched', false)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -91,6 +94,66 @@ export class WatchlistService {
     } catch (error) {
       console.error('Error fetching watchlist:', error);
       return { data: [], error: 'Failed to fetch watchlist' };
+    }
+  }
+
+  static async getWatchedItems(): Promise<{ data: WatchlistItem[]; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('watchlist')
+        .select('*')
+        .eq('watched', true)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching watched items:', error);
+        return { data: [], error: error.message };
+      }
+
+      return { data: (data || []) as WatchlistItem[] };
+    } catch (error) {
+      console.error('Error fetching watched items:', error);
+      return { data: [], error: 'Failed to fetch watched items' };
+    }
+  }
+
+  static async markAsWatched(title: string, year: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('watchlist')
+        .update({ watched: true })
+        .eq('title', title)
+        .eq('year', year);
+
+      if (error) {
+        console.error('Error marking as watched:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking as watched:', error);
+      return { success: false, error: 'Failed to mark as watched' };
+    }
+  }
+
+  static async markAsUnwatched(title: string, year: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('watchlist')
+        .update({ watched: false })
+        .eq('title', title)
+        .eq('year', year);
+
+      if (error) {
+        console.error('Error marking as unwatched:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking as unwatched:', error);
+      return { success: false, error: 'Failed to mark as unwatched' };
     }
   }
 
