@@ -17,12 +17,7 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        if (event === 'SIGNED_IN') {
-          toast({
-            title: "Welcome back!",
-            description: "You have been successfully signed in.",
-          });
-        } else if (event === 'SIGNED_OUT') {
+        if (event === 'SIGNED_OUT') {
           toast({
             title: "Signed out",
             description: "You have been signed out successfully.",
