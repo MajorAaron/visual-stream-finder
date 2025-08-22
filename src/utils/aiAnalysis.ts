@@ -14,6 +14,7 @@ export interface DetectedContent {
   poster: string;
   streamingSources: StreamingSource[];
   confidence: number;
+  releaseDate?: string;
 }
 
 interface StreamingSource {

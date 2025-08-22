@@ -132,36 +132,47 @@ export default function Watchlist() {
 
                     {/* Streaming Sources */}
                     <div>
-                      <h4 className="font-semibold text-sm mb-2">Available on:</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {item.streaming_sources?.slice(0, 4).map((source: any, index: number) => (
-                          <Button
-                            key={index}
-                            variant="outline"
-                            size="sm"
-                            className="h-auto p-2 justify-start"
-                            onClick={() => window.open(source.url, '_blank')}
-                          >
-                            <div className="flex items-center gap-2 w-full">
-                              <img
-                                src={source.logo}
-                                alt={source.name}
-                                className="w-5 h-5 rounded"
-                              />
-                              <div className="flex-1 text-left min-w-0">
-                                <div className="font-medium text-xs truncate">{source.name}</div>
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs h-4 ${sourceTypeColors[source.type as keyof typeof sourceTypeColors]}`}
-                                >
-                                  {source.type}
-                                </Badge>
-                              </div>
-                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                            </div>
-                          </Button>
-                        ))}
-                      </div>
+                      {item.streaming_sources && item.streaming_sources.length > 0 ? (
+                        <>
+                          <h4 className="font-semibold text-sm mb-2">Available on:</h4>
+                          <div className="grid grid-cols-2 gap-2">
+                            {item.streaming_sources?.slice(0, 4).map((source: any, index: number) => (
+                              <Button
+                                key={index}
+                                variant="outline"
+                                size="sm"
+                                className="h-auto p-2 justify-start"
+                                onClick={() => window.open(source.url, '_blank')}
+                              >
+                                <div className="flex items-center gap-2 w-full">
+                                  <img
+                                    src={source.logo}
+                                    alt={source.name}
+                                    className="w-5 h-5 rounded"
+                                  />
+                                  <div className="flex-1 text-left min-w-0">
+                                    <div className="font-medium text-xs truncate">{source.name}</div>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs h-4 ${sourceTypeColors[source.type as keyof typeof sourceTypeColors]}`}
+                                    >
+                                      {source.type}
+                                    </Badge>
+                                  </div>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                </div>
+                              </Button>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-3 border border-dashed rounded-lg">
+                          <p className="text-xs text-muted-foreground mb-1">No streaming sources found</p>
+                          <p className="text-xs text-muted-foreground">
+                            Release Date: {item.year}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Remove button */}

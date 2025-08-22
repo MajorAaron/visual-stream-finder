@@ -177,41 +177,54 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
 
 
                 <div className="space-y-3">
-                  <h4 className="font-semibold">Available on:</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {content.streamingSources.map((source, idx) => (
-                      <Button
-                        key={idx}
-                        variant="outline"
-                        className="flex items-center justify-between p-4 h-auto"
-                        asChild
-                      >
-                        <a href={source.url} target="_blank" rel="noopener noreferrer">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={source.logo}
-                              alt={source.name}
-                              className="w-8 h-8 rounded"
-                            />
-                            <div className="text-left">
-                              <div className="font-medium">{source.name}</div>
-                              <div className="flex items-center gap-2">
-                                <Badge className={sourceTypeColors[source.type]} variant="secondary">
-                                  {source.type}
-                                </Badge>
-                                {source.price && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {source.price}
-                                  </span>
-                                )}
+                  {content.streamingSources && content.streamingSources.length > 0 ? (
+                    <>
+                      <h4 className="font-semibold">Available on:</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {content.streamingSources.map((source, idx) => (
+                          <Button
+                            key={idx}
+                            variant="outline"
+                            className="flex items-center justify-between p-4 h-auto"
+                            asChild
+                          >
+                            <a href={source.url} target="_blank" rel="noopener noreferrer">
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={source.logo}
+                                  alt={source.name}
+                                  className="w-8 h-8 rounded"
+                                />
+                                <div className="text-left">
+                                  <div className="font-medium">{source.name}</div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={sourceTypeColors[source.type]} variant="secondary">
+                                      {source.type}
+                                    </Badge>
+                                    {source.price && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {source.price}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    ))}
-                  </div>
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-muted-foreground mb-2">No streaming sources found</p>
+                      {content.releaseDate && (
+                        <p className="text-sm text-muted-foreground">
+                          Release Date: {content.releaseDate}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-border">

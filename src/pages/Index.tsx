@@ -23,6 +23,7 @@ interface DetectedContent {
   poster: string;
   streamingSources: any[];
   confidence: number;
+  releaseDate?: string;
 }
 
 const Index = () => {

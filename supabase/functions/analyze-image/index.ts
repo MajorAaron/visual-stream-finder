@@ -20,6 +20,7 @@ interface DetectedContent {
   poster: string;
   streamingSources: StreamingSource[];
   confidence: number;
+  releaseDate?: string;
 }
 
 interface StreamingSource {
@@ -66,7 +67,7 @@ const fetchStreamingData = async (title: string, year: number, type: 'movie' | '
   const streamingApiKey = Deno.env.get('STREAMING_AVAILABILITY_API_KEY');
   if (!streamingApiKey) {
     console.error('Streaming Availability API key not found');
-    return getStreamingSources(title);
+    return [];
   }
 
   try {
@@ -86,7 +87,7 @@ const fetchStreamingData = async (title: string, year: number, type: 'movie' | '
 
     if (!searchResponse.ok) {
       console.error('Streaming API search failed:', searchResponse.status, await searchResponse.text());
-      return getStreamingSources(title);
+      return [];
     }
 
     const searchData = await searchResponse.json();
@@ -102,8 +103,8 @@ const fetchStreamingData = async (title: string, year: number, type: 'movie' | '
     }
 
     if (!matchedShow) {
-      console.log('No matching show found, using fallback');
-      return getStreamingSources(title);
+      console.log('No matching show found, returning empty array');
+      return [];
     }
 
     console.log(`Found matching show: ${matchedShow.title} (${matchedShow.releaseYear || matchedShow.firstAirYear})`);
@@ -130,44 +131,16 @@ const fetchStreamingData = async (title: string, year: number, type: 'movie' | '
     if (streamingSources.length > 0) {
       console.log(`Found ${streamingSources.length} real streaming sources for ${title}`);
       return streamingSources;
+    } else {
+      console.log('No streaming sources found for this title');
+      return [];
     }
 
   } catch (error) {
     console.error('Error fetching streaming data:', error);
+    return [];
   }
-
-  // Fallback to mock data
-  console.log('Using fallback streaming sources');
-  return getStreamingSources(title);
 };
-
-// Fallback streaming sources
-const getStreamingSources = (title: string): StreamingSource[] => [
-  {
-    name: "Netflix",
-    logo: "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop",
-    url: `https://www.netflix.com/search?q=${encodeURIComponent(title)}`,
-    type: "subscription"
-  },
-  {
-    name: "Amazon Prime",
-    logo: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=40&h=40&fit=crop",
-    url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(title)}`,
-    type: "subscription"
-  },
-  {
-    name: "Apple TV+",
-    logo: "https://images.unsplash.com/photo-1611605698335-8b1569810432?w=40&h=40&fit=crop",
-    url: `https://tv.apple.com/search?term=${encodeURIComponent(title)}`,
-    type: "subscription"
-  },
-  {
-    name: "Disney+",
-    logo: "https://images.unsplash.com/photo-1606578793980-6e18689e6a3d?w=40&h=40&fit=crop",
-    url: `https://www.disneyplus.com/search/${encodeURIComponent(title)}`,
-    type: "subscription"
-  }
-];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -302,7 +275,8 @@ serve(async (req) => {
       return {
         ...item,
         poster,
-        streamingSources
+        streamingSources,
+        releaseDate: `${item.year}`
       };
     }));
 
