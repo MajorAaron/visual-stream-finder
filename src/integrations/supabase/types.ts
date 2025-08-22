@@ -43,6 +43,7 @@ export type Database = {
       }
       watchlist: {
         Row: {
+          channel_name: string | null
           confidence: number | null
           created_at: string
           genre: string[]
@@ -57,8 +58,10 @@ export type Database = {
           updated_at: string
           user_id: string
           year: number
+          youtube_url: string | null
         }
         Insert: {
+          channel_name?: string | null
           confidence?: number | null
           created_at?: string
           genre?: string[]
@@ -73,8 +76,10 @@ export type Database = {
           updated_at?: string
           user_id: string
           year: number
+          youtube_url?: string | null
         }
         Update: {
+          channel_name?: string | null
           confidence?: number | null
           created_at?: string
           genre?: string[]
@@ -89,6 +94,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           year?: number
+          youtube_url?: string | null
         }
         Relationships: []
       }

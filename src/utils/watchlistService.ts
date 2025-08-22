@@ -16,8 +16,8 @@ export interface WatchlistItem {
   confidence?: number;
   created_at: string;
   updated_at: string;
-  youtubeUrl?: string;
-  channelName?: string;
+  youtube_url?: string;
+  channel_name?: string;
 }
 
 export class WatchlistService {
