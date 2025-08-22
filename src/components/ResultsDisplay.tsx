@@ -34,6 +34,26 @@ const sourceTypeColors = {
   free: 'bg-success/20 text-success'
 };
 
+// Known dark logos that need light backgrounds for visibility
+const darkLogos = [
+  'apple tv',
+  'hbo max', 
+  'hbo',
+  'netflix',
+  'amazon prime video',
+  'disney+',
+  'peacock',
+  'paramount+',
+  'showtime',
+  'starz'
+];
+
+const isDarkLogo = (serviceName: string) => {
+  return darkLogos.some(darkService => 
+    serviceName.toLowerCase().includes(darkService.toLowerCase())
+  );
+};
+
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -239,11 +259,15 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                         >
                           <a href={service.url} target="_blank" rel="noopener noreferrer">
                             <div className="flex items-center gap-3">
-                              <img
-                                src={service.logo}
-                                alt={service.name}
-                                className="w-8 h-8 rounded"
-                              />
+                              <div className={`w-8 h-8 rounded p-1 flex items-center justify-center ${
+                                isDarkLogo(service.name) ? 'bg-white' : 'bg-transparent'
+                              }`}>
+                                <img
+                                  src={service.logo}
+                                  alt={service.name}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
                               <div className="text-left">
                                 <div className="font-medium">{service.name}</div>
                                 <div className="flex items-center gap-1 flex-wrap">

@@ -20,6 +20,26 @@ const sourceTypeColors = {
   free: "bg-blue-500/20 text-blue-400 border-blue-500/30"
 };
 
+// Known dark logos that need light backgrounds for visibility
+const darkLogos = [
+  'apple tv',
+  'hbo max', 
+  'hbo',
+  'netflix',
+  'amazon prime video',
+  'disney+',
+  'peacock',
+  'paramount+',
+  'showtime',
+  'starz'
+];
+
+const isDarkLogo = (serviceName: string) => {
+  return darkLogos.some(darkService => 
+    serviceName.toLowerCase().includes(darkService.toLowerCase())
+  );
+};
+
 export default function Watchlist() {
   const { user, signOut } = useAuth();
   const { watchlist, loading, removeFromWatchlist, markAsWatched } = useWatchlist();
@@ -196,11 +216,15 @@ export default function Watchlist() {
                                   onClick={() => window.open(service.url, '_blank')}
                                 >
                                   <div className="flex items-center gap-3 w-full">
-                                    <img
-                                      src={service.logo}
-                                      alt={service.name}
-                                      className="w-6 h-6 sm:w-8 sm:h-8 rounded flex-shrink-0"
-                                    />
+                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded p-1 flex items-center justify-center flex-shrink-0 ${
+                                      isDarkLogo(service.name) ? 'bg-white' : 'bg-transparent'
+                                    }`}>
+                                      <img
+                                        src={service.logo}
+                                        alt={service.name}
+                                        className="w-full h-full object-contain"
+                                      />
+                                    </div>
                                     <div className="flex-1 text-left min-w-0">
                                       <div className="font-medium text-sm truncate">{service.name}</div>
                                       <div className="flex items-center gap-1 flex-wrap">
