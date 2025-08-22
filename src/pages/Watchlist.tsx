@@ -9,7 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 const typeColors = {
   movie: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   tv: "bg-green-500/20 text-green-400 border-green-500/30",
-  documentary: "bg-purple-500/20 text-purple-400 border-purple-500/30"
+  documentary: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  youtube: "bg-red-500/20 text-red-400 border-red-500/30"
 };
 
 const sourceTypeColors = {
@@ -130,9 +131,34 @@ export default function Watchlist() {
                       <p className="text-sm text-muted-foreground line-clamp-2">{item.plot}</p>
                     )}
 
-                    {/* Streaming Sources */}
+                    {/* Streaming Sources / YouTube Link */}
                     <div>
-                      {item.streaming_sources && item.streaming_sources.length > 0 ? (
+                      {item.type === 'youtube' ? (
+                        <>
+                          <h4 className="font-semibold text-sm mb-2">Watch on YouTube:</h4>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-auto p-2 justify-start w-full"
+                            onClick={() => window.open((item as any).youtubeUrl || `https://youtube.com/search?q=${encodeURIComponent(item.title)}`, '_blank')}
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <div className="w-5 h-5 bg-red-500 rounded flex items-center justify-center">
+                                <span className="text-white font-bold text-xs">YT</span>
+                              </div>
+                              <div className="flex-1 text-left min-w-0">
+                                <div className="font-medium text-xs truncate">YouTube</div>
+                                {(item as any).channelName && (
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {(item as any).channelName}
+                                  </div>
+                                )}
+                              </div>
+                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                            </div>
+                          </Button>
+                        </>
+                      ) : item.streaming_sources && item.streaming_sources.length > 0 ? (
                         <>
                           <h4 className="font-semibold text-sm mb-2">Available on:</h4>
                           <div className="grid grid-cols-2 gap-2">

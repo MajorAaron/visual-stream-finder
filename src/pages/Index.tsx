@@ -15,7 +15,7 @@ type AnalysisStage = 'analyzing' | 'identifying' | 'searching' | 'complete';
 interface DetectedContent {
   title: string;
   year: number;
-  type: 'movie' | 'tv' | 'documentary';
+  type: 'movie' | 'tv' | 'documentary' | 'youtube';
   genre: string[];
   rating: number;
   runtime?: string;
@@ -24,6 +24,8 @@ interface DetectedContent {
   streamingSources: any[];
   confidence: number;
   releaseDate?: string;
+  youtubeUrl?: string;
+  channelName?: string;
 }
 
 const Index = () => {

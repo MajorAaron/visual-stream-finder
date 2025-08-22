@@ -6,7 +6,7 @@ export interface WatchlistItem {
   user_id: string;
   title: string;
   year: number;
-  type: 'movie' | 'tv' | 'documentary';
+  type: 'movie' | 'tv' | 'documentary' | 'youtube';
   genre: string[];
   rating?: number;
   runtime?: string;
@@ -16,6 +16,8 @@ export interface WatchlistItem {
   confidence?: number;
   created_at: string;
   updated_at: string;
+  youtubeUrl?: string;
+  channelName?: string;
 }
 
 export class WatchlistService {
@@ -34,7 +36,11 @@ export class WatchlistService {
           poster: content.poster,
           streaming_sources: content.streamingSources as any,
           confidence: content.confidence,
-          user_id: (await supabase.auth.getUser()).data.user?.id
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          ...(content.type === 'youtube' && {
+            youtube_url: content.youtubeUrl,
+            channel_name: content.channelName
+          })
         });
 
       if (error) {

@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 export interface DetectedContent {
   title: string;
   year: number;
-  type: 'movie' | 'tv' | 'documentary';
+  type: 'movie' | 'tv' | 'documentary' | 'youtube';
   genre: string[];
   rating: number;
   runtime?: string;
@@ -15,6 +15,8 @@ export interface DetectedContent {
   streamingSources: StreamingSource[];
   confidence: number;
   releaseDate?: string;
+  youtubeUrl?: string;
+  channelName?: string;
 }
 
 interface StreamingSource {

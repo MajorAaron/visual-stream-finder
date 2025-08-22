@@ -12,7 +12,7 @@ const corsHeaders = {
 interface DetectedContent {
   title: string;
   year: number;
-  type: 'movie' | 'tv' | 'documentary';
+  type: 'movie' | 'tv' | 'documentary' | 'youtube';
   genre: string[];
   rating: number;
   runtime?: string;
@@ -21,6 +21,8 @@ interface DetectedContent {
   streamingSources: StreamingSource[];
   confidence: number;
   releaseDate?: string;
+  youtubeUrl?: string;
+  channelName?: string;
 }
 
 interface StreamingSource {
@@ -189,29 +191,34 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at identifying movies and TV shows from images, including upcoming releases and newer titles. 
-            Analyze the image and identify any movies, TV shows, or documentaries visible.
+            content: `You are an expert at identifying movies, TV shows, documentaries, and YouTube videos from images.
+            Analyze the image and identify any movies, TV shows, documentaries, or YouTube videos visible.
             
-            IMPORTANT: Include upcoming releases, sequels, and newer titles (2024-2025) even if they haven't been widely released yet.
-            For franchises like Jurassic World, Marvel, DC, etc., be aware of announced sequels and upcoming installments.
+            IMPORTANT: 
+            - Include upcoming releases, sequels, and newer titles (2024-2025) even if they haven't been widely released yet
+            - For YouTube videos, look for YouTube interface elements, thumbnails, channel names, or video titles
+            - For franchises like Jurassic World, Marvel, DC, etc., be aware of announced sequels and upcoming installments
             
             Return a JSON array of objects with this exact structure:
             [{
               "title": "exact title",
               "year": year_number,
-              "type": "movie" | "tv" | "documentary",
+              "type": "movie" | "tv" | "documentary" | "youtube",
               "genre": ["genre1", "genre2"],
               "rating": 7.5,
               "runtime": "120 min",
-              "plot": "brief plot description",
+              "plot": "brief description",
               "poster": "https://placeholder-poster-url.jpg",
-              "confidence": confidence_score_0_to_1
+              "confidence": confidence_score_0_to_1,
+              "youtubeUrl": "https://youtube.com/watch?v=VIDEO_ID",
+              "channelName": "Channel Name"
             }]
             
             Guidelines:
             - Include results with confidence >= 0.6
             - For upcoming releases, use estimated year and rating of 7.5
-            - For sequels, include the franchise name and sequel number
+            - For YouTube videos, include youtubeUrl and channelName if visible
+            - For YouTube videos, use the upload year or current year if unknown
             - If you can't identify anything clearly, return an empty array []`
           },
           {
@@ -268,16 +275,29 @@ serve(async (req) => {
 
     // Add streaming sources and fetch real posters for each detected item
     const results = await Promise.all(detectedContent.map(async (item) => {
-      const [poster, streamingSources] = await Promise.all([
-        fetchPosterFromTMDB(item.title, item.year, item.type),
-        fetchStreamingData(item.title, item.year, item.type)
-      ]);
-      return {
-        ...item,
-        poster,
-        streamingSources,
-        releaseDate: `${item.year}`
-      };
+      if (item.type === 'youtube') {
+        // For YouTube videos, don't fetch streaming sources or TMDB posters
+        return {
+          ...item,
+          poster: item.poster || "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=300&h=450&fit=crop",
+          streamingSources: [],
+          releaseDate: `${item.year}`,
+          youtubeUrl: item.youtubeUrl || '',
+          channelName: item.channelName || ''
+        };
+      } else {
+        // For movies/TV/documentaries, fetch TMDB poster and streaming sources
+        const [poster, streamingSources] = await Promise.all([
+          fetchPosterFromTMDB(item.title, item.year, item.type as 'movie' | 'tv' | 'documentary'),
+          fetchStreamingData(item.title, item.year, item.type as 'movie' | 'tv' | 'documentary')
+        ]);
+        return {
+          ...item,
+          poster,
+          streamingSources,
+          releaseDate: `${item.year}`
+        };
+      }
     }));
 
     console.log('Final results:', results);

@@ -23,7 +23,8 @@ interface ResultsDisplayProps {
 const typeColors = {
   movie: 'bg-blue-500/20 text-blue-400',
   tv: 'bg-green-500/20 text-green-400',
-  documentary: 'bg-purple-500/20 text-purple-400'
+  documentary: 'bg-purple-500/20 text-purple-400',
+  youtube: 'bg-red-500/20 text-red-400'
 };
 
 const sourceTypeColors = {
@@ -177,7 +178,33 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
 
 
                 <div className="space-y-3">
-                  {content.streamingSources && content.streamingSources.length > 0 ? (
+                  {content.type === 'youtube' ? (
+                    <>
+                      <h4 className="font-semibold">Watch on YouTube:</h4>
+                      <Button
+                        variant="outline"
+                        className="flex items-center justify-between p-4 h-auto w-full"
+                        asChild
+                      >
+                        <a href={content.youtubeUrl || `https://youtube.com/search?q=${encodeURIComponent(content.title)}`} target="_blank" rel="noopener noreferrer">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-500 rounded flex items-center justify-center">
+                              <span className="text-white font-bold text-xs">YT</span>
+                            </div>
+                            <div className="text-left">
+                              <div className="font-medium">YouTube</div>
+                              {content.channelName && (
+                                <div className="text-xs text-muted-foreground">
+                                  {content.channelName}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </Button>
+                    </>
+                  ) : content.streamingSources && content.streamingSources.length > 0 ? (
                     <>
                       <h4 className="font-semibold">Available on:</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
