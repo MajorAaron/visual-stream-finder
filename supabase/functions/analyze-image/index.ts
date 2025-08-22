@@ -114,23 +114,30 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at identifying movies and TV shows from images. 
+            content: `You are an expert at identifying movies and TV shows from images, including upcoming releases and newer titles. 
             Analyze the image and identify any movies, TV shows, or documentaries visible.
+            
+            IMPORTANT: Include upcoming releases, sequels, and newer titles (2024-2025) even if they haven't been widely released yet.
+            For franchises like Jurassic World, Marvel, DC, etc., be aware of announced sequels and upcoming installments.
+            
             Return a JSON array of objects with this exact structure:
             [{
               "title": "exact title",
               "year": year_number,
               "type": "movie" | "tv" | "documentary",
               "genre": ["genre1", "genre2"],
-              "rating": imdb_rating_number,
-              "runtime": "duration_string",
+              "rating": 7.5,
+              "runtime": "120 min",
               "plot": "brief plot description",
               "poster": "https://placeholder-poster-url.jpg",
               "confidence": confidence_score_0_to_1
             }]
             
-            If you can't identify anything clearly, return an empty array [].
-            Be confident in your identifications - only include results you're sure about.`
+            Guidelines:
+            - Include results with confidence >= 0.6
+            - For upcoming releases, use estimated year and rating of 7.5
+            - For sequels, include the franchise name and sequel number
+            - If you can't identify anything clearly, return an empty array []`
           },
           {
             role: 'user',
