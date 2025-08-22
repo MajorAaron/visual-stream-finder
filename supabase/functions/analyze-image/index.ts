@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const tmdbApiKey = Deno.env.get('TMDB_API_KEY');
+const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -144,6 +145,78 @@ const fetchStreamingData = async (title: string, year: number, type: 'movie' | '
   }
 };
 
+// Fetch real YouTube video data using YouTube Data API
+const fetchYouTubeData = async (videoTitle: string): Promise<{ thumbnail: string; url: string; channelName: string; actualTitle: string } | null> => {
+  if (!youtubeApiKey) {
+    console.error('YouTube API key not found');
+    return null;
+  }
+
+  try {
+    console.log(`Searching YouTube for: ${videoTitle}`);
+    
+    // Search for videos using YouTube Data API v3
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(videoTitle)}&type=video&maxResults=5&key=${youtubeApiKey}`;
+    
+    const searchResponse = await fetch(searchUrl);
+    
+    if (!searchResponse.ok) {
+      console.error('YouTube API search failed:', searchResponse.status, await searchResponse.text());
+      return null;
+    }
+
+    const searchData = await searchResponse.json();
+    
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log('No YouTube videos found for query:', videoTitle);
+      return null;
+    }
+
+    // Get the first result (most relevant)
+    const video = searchData.items[0];
+    const videoId = video.id.videoId;
+    
+    // Get video details including higher quality thumbnail
+    const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${youtubeApiKey}`;
+    const detailsResponse = await fetch(videoDetailsUrl);
+    
+    if (!detailsResponse.ok) {
+      console.error('YouTube API video details failed:', detailsResponse.status);
+      // Fallback to search result data
+      return {
+        thumbnail: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        channelName: video.snippet.channelTitle,
+        actualTitle: video.snippet.title
+      };
+    }
+
+    const detailsData = await detailsResponse.json();
+    const videoDetails = detailsData.items[0];
+    
+    if (!videoDetails) {
+      console.error('No video details found for video ID:', videoId);
+      return null;
+    }
+
+    console.log(`Found YouTube video: ${videoDetails.snippet.title} by ${videoDetails.snippet.channelTitle}`);
+
+    return {
+      thumbnail: videoDetails.snippet.thumbnails.maxres?.url || 
+                videoDetails.snippet.thumbnails.high?.url || 
+                videoDetails.snippet.thumbnails.medium?.url || 
+                videoDetails.snippet.thumbnails.default?.url,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      channelName: videoDetails.snippet.channelTitle,
+      actualTitle: videoDetails.snippet.title
+    };
+
+  } catch (error) {
+    console.error('Error fetching YouTube data:', error);
+    return null;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -276,15 +349,30 @@ serve(async (req) => {
     // Add streaming sources and fetch real posters for each detected item
     const results = await Promise.all(detectedContent.map(async (item) => {
       if (item.type === 'youtube') {
-        // For YouTube videos, don't fetch streaming sources or TMDB posters
-        return {
-          ...item,
-          poster: item.poster || "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=300&h=450&fit=crop",
-          streamingSources: [],
-          releaseDate: `${item.year}`,
-          youtubeUrl: item.youtubeUrl || '',
-          channelName: item.channelName || ''
-        };
+        // For YouTube videos, fetch real video data using YouTube API
+        const youtubeData = await fetchYouTubeData(item.title);
+        
+        if (youtubeData) {
+          return {
+            ...item,
+            title: youtubeData.actualTitle, // Use the actual video title from YouTube
+            poster: youtubeData.thumbnail,
+            streamingSources: [],
+            releaseDate: `${item.year}`,
+            youtubeUrl: youtubeData.url,
+            channelName: youtubeData.channelName
+          };
+        } else {
+          // Fallback if YouTube API fails
+          return {
+            ...item,
+            poster: item.poster || "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=300&h=450&fit=crop",
+            streamingSources: [],
+            releaseDate: `${item.year}`,
+            youtubeUrl: item.youtubeUrl || `https://youtube.com/results?search_query=${encodeURIComponent(item.title)}`,
+            channelName: item.channelName || ''
+          };
+        }
       } else {
         // For movies/TV/documentaries, fetch TMDB poster and streaming sources
         const [poster, streamingSources] = await Promise.all([
