@@ -63,7 +63,7 @@ export default function Watchlist() {
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {watchlist.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -80,9 +80,9 @@ export default function Watchlist() {
             </Link>
           </div>
         ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 sm:gap-6 space-y-4 sm:space-y-6">
             {watchlist.map((item) => (
-              <Card key={item.id} className="overflow-hidden break-inside-avoid mb-6">
+              <Card key={item.id} className="overflow-hidden break-inside-avoid mb-4 sm:mb-6">
                 <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
                   <img
                     src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
@@ -90,12 +90,12 @@ export default function Watchlist() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-bold text-lg line-clamp-2">{item.title}</h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-bold text-lg sm:text-xl line-clamp-2 mb-2">{item.title}</h3>
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {item.year}
@@ -114,7 +114,7 @@ export default function Watchlist() {
                           )}
                         </div>
                       </div>
-                      <Badge variant="outline" className={typeColors[item.type]}>
+                      <Badge variant="outline" className={`${typeColors[item.type]} flex-shrink-0 text-xs`}>
                         {item.type.toUpperCase()}
                       </Badge>
                     </div>
@@ -128,56 +128,56 @@ export default function Watchlist() {
                     </div>
 
                     {item.plot && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">{item.plot}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
                     )}
 
                     {/* Streaming Sources / YouTube Link */}
-                    <div>
+                    <div className="space-y-3">
                       {item.type === 'youtube' ? (
                         <>
-                          <h4 className="font-semibold text-sm mb-2">Watch on YouTube:</h4>
+                          <h4 className="font-semibold text-sm">Watch on YouTube:</h4>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-auto p-2 justify-start w-full"
+                            className="h-auto p-3 sm:p-4 justify-start w-full"
                             onClick={() => window.open((item as any).youtube_url || `https://youtube.com/search?q=${encodeURIComponent(item.title)}`, '_blank')}
                           >
-                            <div className="flex items-center gap-2 w-full">
-                              <div className="w-5 h-5 bg-red-500 rounded flex items-center justify-center">
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded flex items-center justify-center flex-shrink-0">
                                 <span className="text-white font-bold text-xs">YT</span>
                               </div>
                               <div className="flex-1 text-left min-w-0">
-                                <div className="font-medium text-xs truncate">YouTube</div>
+                                <div className="font-medium text-sm truncate">YouTube</div>
                                 {(item as any).channel_name && (
                                   <div className="text-xs text-muted-foreground truncate">
                                     {(item as any).channel_name}
                                   </div>
                                 )}
                               </div>
-                              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                              <ExternalLink className="w-4 h-4 flex-shrink-0" />
                             </div>
                           </Button>
                         </>
                       ) : item.streaming_sources && item.streaming_sources.length > 0 ? (
                         <>
-                          <h4 className="font-semibold text-sm mb-2">Available on:</h4>
-                          <div className="grid grid-cols-2 gap-2">
+                          <h4 className="font-semibold text-sm">Available on:</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {item.streaming_sources?.slice(0, 4).map((source: any, index: number) => (
                               <Button
                                 key={index}
                                 variant="outline"
                                 size="sm"
-                                className="h-auto p-2 justify-start"
+                                className="h-auto p-3 sm:p-4 justify-start"
                                 onClick={() => window.open(source.url, '_blank')}
                               >
-                                <div className="flex items-center gap-2 w-full">
+                                <div className="flex items-center gap-3 w-full">
                                   <img
                                     src={source.logo}
                                     alt={source.name}
-                                    className="w-5 h-5 rounded"
+                                    className="w-6 h-6 sm:w-8 sm:h-8 rounded flex-shrink-0"
                                   />
                                   <div className="flex-1 text-left min-w-0">
-                                    <div className="font-medium text-xs truncate">{source.name}</div>
+                                    <div className="font-medium text-sm truncate">{source.name}</div>
                                     <Badge 
                                       variant="outline" 
                                       className={`text-xs h-4 ${sourceTypeColors[source.type as keyof typeof sourceTypeColors]}`}
@@ -185,16 +185,16 @@ export default function Watchlist() {
                                       {source.type}
                                     </Badge>
                                   </div>
-                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                  <ExternalLink className="w-4 h-4 flex-shrink-0" />
                                 </div>
                               </Button>
                             ))}
                           </div>
                         </>
                       ) : (
-                        <div className="text-center py-3 border border-dashed rounded-lg">
-                          <p className="text-xs text-muted-foreground mb-1">No streaming sources found</p>
-                          <p className="text-xs text-muted-foreground">
+                        <div className="text-center py-4 border border-dashed rounded-lg">
+                          <p className="text-sm text-muted-foreground mb-1">No streaming sources found</p>
+                          <p className="text-sm text-muted-foreground">
                             Release Date: {item.year}
                           </p>
                         </div>
@@ -206,14 +206,14 @@ export default function Watchlist() {
                       onClick={() => removeFromWatchlist(item.title, item.year)}
                       variant="outline"
                       size="sm"
-                      className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                      className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 h-10 sm:h-9"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Remove from Watchlist
                     </Button>
 
                     {item.confidence && (
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground pt-2 border-t">
                         Confidence: {Math.round(item.confidence * 100)}%
                       </div>
                     )}
