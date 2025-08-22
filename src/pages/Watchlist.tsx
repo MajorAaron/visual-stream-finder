@@ -167,33 +167,59 @@ export default function Watchlist() {
                         <>
                           <h4 className="font-semibold text-sm">Available on:</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {item.streaming_sources?.slice(0, 4).map((source: any, index: number) => (
-                              <Button
-                                key={index}
-                                variant="outline"
-                                size="sm"
-                                className="h-auto p-3 sm:p-4 justify-start"
-                                onClick={() => window.open(source.url, '_blank')}
-                              >
-                                <div className="flex items-center gap-3 w-full">
-                                  <img
-                                    src={source.logo}
-                                    alt={source.name}
-                                    className="w-6 h-6 sm:w-8 sm:h-8 rounded flex-shrink-0"
-                                  />
-                                  <div className="flex-1 text-left min-w-0">
-                                    <div className="font-medium text-sm truncate">{source.name}</div>
-                                    <Badge 
-                                      variant="outline" 
-                                      className={`text-xs h-4 ${sourceTypeColors[source.type as keyof typeof sourceTypeColors]}`}
-                                    >
-                                      {source.type}
-                                    </Badge>
+                            {(() => {
+                              // Group streaming sources by service name
+                              const groupedSources = item.streaming_sources.reduce((acc: any, source: any) => {
+                                if (!acc[source.name]) {
+                                  acc[source.name] = {
+                                    name: source.name,
+                                    logo: source.logo,
+                                    url: source.url, // Use the first URL found
+                                    types: []
+                                  };
+                                }
+                                if (!acc[source.name].types.find((t: any) => t.type === source.type)) {
+                                  acc[source.name].types.push({
+                                    type: source.type,
+                                    price: source.price
+                                  });
+                                }
+                                return acc;
+                              }, {});
+
+                              return Object.values(groupedSources).slice(0, 4).map((service: any, index: number) => (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-auto p-3 sm:p-4 justify-start"
+                                  onClick={() => window.open(service.url, '_blank')}
+                                >
+                                  <div className="flex items-center gap-3 w-full">
+                                    <img
+                                      src={service.logo}
+                                      alt={service.name}
+                                      className="w-6 h-6 sm:w-8 sm:h-8 rounded flex-shrink-0"
+                                    />
+                                    <div className="flex-1 text-left min-w-0">
+                                      <div className="font-medium text-sm truncate">{service.name}</div>
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        {service.types.map((typeInfo: any, typeIdx: number) => (
+                                          <Badge 
+                                            key={typeIdx}
+                                            variant="outline" 
+                                            className={`text-xs h-4 ${sourceTypeColors[typeInfo.type as keyof typeof sourceTypeColors]}`}
+                                          >
+                                            {typeInfo.type}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
                                   </div>
-                                  <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                                </div>
-                              </Button>
-                            ))}
+                                </Button>
+                              ));
+                            })()}
                           </div>
                         </>
                       ) : (

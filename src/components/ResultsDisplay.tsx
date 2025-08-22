@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Star, Clock, Calendar, Bookmark, BookmarkCheck } from 'lucide-react';
 import { WatchlistService } from '@/utils/watchlistService';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { DetectedContent } from '@/utils/aiAnalysis';
 
 interface StreamingSource {
@@ -207,43 +207,65 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                       </Button>
                     </>
                   ) : content.streamingSources && content.streamingSources.length > 0 ? (
-                    <>
-                      <h4 className="font-semibold">Available on:</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {content.streamingSources.map((source, idx) => (
-                          <Button
-                            key={idx}
-                            variant="outline"
-                            className="flex items-center justify-between p-4 h-auto"
-                            asChild
-                          >
-                            <a href={source.url} target="_blank" rel="noopener noreferrer">
-                              <div className="flex items-center gap-3">
-                                <img
-                                  src={source.logo}
-                                  alt={source.name}
-                                  className="w-8 h-8 rounded"
-                                />
-                                <div className="text-left">
-                                  <div className="font-medium">{source.name}</div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge className={sourceTypeColors[source.type]} variant="secondary">
-                                      {source.type}
+                <>
+                  <h4 className="font-semibold">Available on:</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(() => {
+                      // Group streaming sources by service name
+                      const groupedSources = content.streamingSources.reduce((acc: any, source: any) => {
+                        if (!acc[source.name]) {
+                          acc[source.name] = {
+                            name: source.name,
+                            logo: source.logo,
+                            url: source.url, // Use the first URL found
+                            types: []
+                          };
+                        }
+                        if (!acc[source.name].types.find((t: any) => t.type === source.type)) {
+                          acc[source.name].types.push({
+                            type: source.type,
+                            price: source.price
+                          });
+                        }
+                        return acc;
+                      }, {});
+
+                      return Object.values(groupedSources).map((service: any, idx: number) => (
+                        <Button
+                          key={idx}
+                          variant="outline"
+                          className="flex items-center justify-between p-4 h-auto"
+                          asChild
+                        >
+                          <a href={service.url} target="_blank" rel="noopener noreferrer">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={service.logo}
+                                alt={service.name}
+                                className="w-8 h-8 rounded"
+                              />
+                              <div className="text-left">
+                                <div className="font-medium">{service.name}</div>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {service.types.map((typeInfo: any, typeIdx: number) => (
+                                    <Badge 
+                                      key={typeIdx}
+                                      className={sourceTypeColors[typeInfo.type]} 
+                                      variant="secondary"
+                                    >
+                                      {typeInfo.type}
                                     </Badge>
-                                    {source.price && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {source.price}
-                                      </span>
-                                    )}
-                                  </div>
+                                  ))}
                                 </div>
                               </div>
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        ))}
-                      </div>
-                    </>
+                            </div>
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      ));
+                    })()}
+                  </div>
+                </>
                   ) : (
                     <div className="text-center py-4">
                       <p className="text-muted-foreground mb-2">No streaming sources found</p>
