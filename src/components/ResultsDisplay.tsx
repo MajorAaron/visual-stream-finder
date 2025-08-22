@@ -113,7 +113,9 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                 <img
                   src={content.poster}
                   alt={content.title}
-                  className="w-32 h-48 object-cover rounded-lg shadow-lg"
+                  className={`object-cover rounded-lg shadow-lg ${
+                    content.type === 'youtube' ? 'w-48 h-28' : 'w-32 h-48'
+                  }`}
                 />
               </div>
 

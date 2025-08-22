@@ -83,7 +83,7 @@ export default function Watchlist() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {watchlist.map((item) => (
               <Card key={item.id} className="overflow-hidden">
-                <div className="aspect-[2/3] overflow-hidden">
+                <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
                   <img
                     src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
                     alt={`${item.title} poster`}
