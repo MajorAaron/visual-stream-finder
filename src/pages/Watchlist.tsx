@@ -33,10 +33,10 @@ export default function Watchlist() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+        <div className="px-2 sm:px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Link to="/">
               <Button variant="ghost" size="sm">
@@ -63,7 +63,7 @@ export default function Watchlist() {
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6">
+      <div className="px-2 sm:px-3 py-2 sm:py-3">
         {watchlist.length === 0 ? (
           <div className="text-center py-12 sm:py-16 px-4">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -80,9 +80,9 @@ export default function Watchlist() {
             </Link>
           </div>
         ) : (
-          <div className="columns-1 sm:columns-2 lg:columns-3 gap-3 sm:gap-4 lg:gap-6 space-y-3 sm:space-y-4 lg:space-y-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-2 sm:gap-3 space-y-2 sm:space-y-3">
             {watchlist.map((item) => (
-              <Card key={item.id} className="overflow-hidden break-inside-avoid mb-3 sm:mb-4 lg:mb-6">
+              <Card key={item.id} className="overflow-hidden break-inside-avoid mb-2 sm:mb-3">
                 <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
                   <img
                     src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
@@ -90,7 +90,7 @@ export default function Watchlist() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <CardContent className="p-3 sm:p-4 lg:p-6">
+                <CardContent className="p-3 sm:p-4">
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
