@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ImageUpload } from '@/components/ImageUpload';
+import { SearchInput } from '@/components/SearchInput';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
 import { AIAnalysisService } from '@/utils/aiAnalysis';
@@ -85,6 +85,42 @@ const Index = () => {
     }
   };
 
+  const handleTextSearch = async (query: string) => {
+    setAppState('analyzing');
+    setProgress(0);
+    setAnalysisStage('searching');
+
+    // Simulate search stages for text
+    const stages: AnalysisStage[] = ['searching', 'complete'];
+    
+    for (let i = 0; i < stages.length; i++) {
+      setAnalysisStage(stages[i]);
+      
+      // Animate progress for each stage
+      const stageProgress = (i + 1) * 50;
+      const startProgress = i * 50;
+      
+      for (let p = startProgress; p <= stageProgress; p += 4) {
+        setProgress(p);
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
+      
+      if (i < stages.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    }
+
+    try {
+      const searchResults = await AIAnalysisService.searchByText(query);
+      setResults(searchResults);
+      setProgress(100);
+      setAppState('results');
+    } catch (error) {
+      console.error('Search failed:', error);
+      setAppState('upload');
+    }
+  };
+
   const handleNewSearch = () => {
     setAppState('upload');
     setProgress(0);
@@ -127,8 +163,8 @@ const Index = () => {
                 Discover What to Watch
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Upload any image or screenshot and let AI identify movies and TV shows, 
-                then find where to watch them instantly.
+                Upload any image, paste a title, or share text from your phone to find movies and TV shows 
+                and discover where to watch them instantly.
               </p>
             </div>
 
@@ -138,9 +174,9 @@ const Index = () => {
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-primary font-bold">1</span>
                 </div>
-                <h3 className="font-semibold mb-2">Upload Image</h3>
+                <h3 className="font-semibold mb-2">Upload or Search</h3>
                 <p className="text-sm text-muted-foreground">
-                  Drop any image containing movies or TV shows
+                  Drop an image or enter a movie/TV show title
                 </p>
               </div>
               <div className="text-center p-6 bg-card rounded-lg">
@@ -149,7 +185,7 @@ const Index = () => {
                 </div>
                 <h3 className="font-semibold mb-2">AI Analysis</h3>
                 <p className="text-sm text-muted-foreground">
-                  Our AI identifies and analyzes the content
+                  AI identifies content or searches databases
                 </p>
               </div>
               <div className="text-center p-6 bg-card rounded-lg">
@@ -168,7 +204,7 @@ const Index = () => {
         {/* Main Content */}
         <div className="space-y-6">
           {appState === 'upload' && (
-            <ImageUpload onImageUpload={handleImageUpload} />
+            <SearchInput onImageUpload={handleImageUpload} onTextSearch={handleTextSearch} />
           )}
 
           {appState === 'analyzing' && (

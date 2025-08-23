@@ -123,6 +123,33 @@ export class AIAnalysisService {
     }
   }
 
+  static async searchByText(query: string): Promise<DetectedContent[]> {
+    try {
+      // Call the new search-content edge function
+      const { data, error } = await supabase.functions.invoke('search-content', {
+        body: { query }
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        toast.error('Failed to search content. Please try again.');
+        throw error;
+      }
+
+      if (data.error) {
+        console.error('Search error:', data.error);
+        toast.error('Failed to search content. Please try again.');
+        throw new Error(data.error);
+      }
+
+      return data.results || [];
+    } catch (error) {
+      console.error('Search failed:', error);
+      toast.error('Failed to search content. Please try again.');
+      throw error;
+    }
+  }
+
   static async getStreamingSources(title: string, year: number): Promise<StreamingSource[]> {
     // Mock streaming source lookup
     await new Promise(resolve => setTimeout(resolve, 1000));
