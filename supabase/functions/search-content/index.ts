@@ -235,7 +235,7 @@ async function searchContent(query: string): Promise<ContentResult[]> {
       index === self.findIndex(r => r.title.toLowerCase() === result.title.toLowerCase() && r.year === result.year)
     );
     
-    return uniqueResults.sort((a, b) => b.rating - a.rating).slice(0, 5);
+    return uniqueResults.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
     
   } catch (error) {
     console.error('Error searching content:', error);
