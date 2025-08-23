@@ -133,8 +133,51 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
         type = 'tv';
       }
     }
+    // Peacock TV specific extraction
+    else if (url.includes('peacocktv.com')) {
+      // Try to extract from URL path - Peacock URLs often have the title in the path
+      const pathMatch = url.match(/\/movies\/([^\/]+)\/|\/shows\/([^\/]+)\//);
+      if (pathMatch) {
+        title = (pathMatch[1] || pathMatch[2]).replace(/-/g, ' ');
+        console.log('Extracted from Peacock URL path:', title);
+      }
+      
+      // Also try to extract from page title
+      if (!title) {
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) {
+          title = titleMatch[1];
+          // Clean up Peacock title format
+          title = title.replace(/\s*\|\s*Peacock.*$/i, '');
+          title = title.replace(/\s*-\s*watch.*$/i, '');
+          title = title.trim();
+        }
+      }
+    }
+    // Hulu specific extraction
+    else if (url.includes('hulu.com')) {
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleMatch) {
+        title = titleMatch[1];
+        // Clean up Hulu title format
+        title = title.replace(/\s*\|\s*Hulu.*$/i, '');
+        title = title.replace(/\s*-\s*watch.*$/i, '');
+        title = title.trim();
+      }
+    }
+    // Netflix specific extraction
+    else if (url.includes('netflix.com')) {
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleMatch) {
+        title = titleMatch[1];
+        // Clean up Netflix title format
+        title = title.replace(/\s*\|\s*Netflix.*$/i, '');
+        title = title.replace(/\s*-\s*watch.*$/i, '');
+        title = title.trim();
+      }
+    }
     
-    // If we couldn't extract a title, try to get it from other meta tags
+    // Generic fallback - try to get title from meta tags
     if (!title) {
       const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
       if (ogTitleMatch) {
@@ -146,10 +189,35 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
       }
     }
     
-    console.log('Extracted title:', title, 'year:', year, 'type:', type);
-    
+    // Last resort - try to extract from page title
     if (!title) {
-      throw new Error('Could not extract title from URL');
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleMatch) {
+        title = titleMatch[1];
+        // Generic cleanup
+        title = title.replace(/\s*\|\s*.+$/, ''); // Remove "| Site Name" etc
+        title = title.replace(/\s*-\s*.+$/, ''); // Remove "- Site Name" etc
+        title = title.trim();
+      }
+    }
+    
+    console.log('Final extracted title:', title, 'year:', year, 'type:', type);
+    
+    // If we still couldn't extract a title, try searching with the URL domain as context
+    if (!title || title.length < 2) {
+      const domain = url.match(/https?:\/\/(?:www\.)?([^\/]+)/)?.[1] || '';
+      console.log('Could not extract meaningful title, trying fallback search with domain:', domain);
+      
+      // Try to extract any meaningful text from the URL path as a last resort
+      const pathParts = url.split('/').filter(part => part && !part.includes('.') && part.length > 2);
+      const potentialTitle = pathParts[pathParts.length - 1]?.replace(/-/g, ' ') || '';
+      
+      if (potentialTitle && potentialTitle.length > 2) {
+        title = potentialTitle;
+        console.log('Using URL path as title:', title);
+      } else {
+        throw new Error(`Could not extract title from ${domain} URL`);
+      }
     }
     
     // Now search for the extracted title
@@ -157,7 +225,10 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
     
   } catch (error) {
     console.error('Error extracting content from URL:', error);
-    throw error;
+    // Instead of throwing the error, try to search with just the domain context
+    const domain = url.match(/https?:\/\/(?:www\.)?([^\/]+)/)?.[1] || 'streaming service';
+    console.log('Fallback: returning empty results for failed URL extraction from', domain);
+    return [];
   }
 }
 
