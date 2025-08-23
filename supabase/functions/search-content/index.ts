@@ -110,8 +110,8 @@ async function extractWithAI(url: string): Promise<ContentResult[] | null> {
   try {
     console.log('Using Firecrawl to extract page content...');
     
-    // Use Firecrawl to get clean page content
-    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+    // Use Firecrawl v1 API to get clean page content
+    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${firecrawlApiKey}`,
@@ -119,23 +119,24 @@ async function extractWithAI(url: string): Promise<ContentResult[] | null> {
       },
       body: JSON.stringify({
         url: url,
-        pageOptions: {
-          onlyMainContent: true
-        },
-        extractorOptions: {
-          mode: 'llm-extraction',
-          extractionPrompt: 'Extract the movie or TV show title, year, type (movie/tv), and a brief description from this page'
-        }
+        formats: ['markdown', 'html'],
+        onlyMainContent: true,
+        timeout: 30000
       }),
     });
     
+    console.log('Firecrawl response status:', firecrawlResponse.status);
+    
     if (!firecrawlResponse.ok) {
-      console.log('Firecrawl failed, status:', firecrawlResponse.status);
+      const errorText = await firecrawlResponse.text();
+      console.log('Firecrawl error response:', errorText);
       return null;
     }
     
     const firecrawlData = await firecrawlResponse.json();
-    const pageContent = firecrawlData.data?.content || firecrawlData.data?.markdown || '';
+    console.log('Firecrawl data keys:', Object.keys(firecrawlData));
+    
+    const pageContent = firecrawlData.data?.markdown || firecrawlData.data?.html || '';
     
     if (!pageContent) {
       console.log('No content extracted from Firecrawl');
