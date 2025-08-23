@@ -105,15 +105,27 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
       if (titleMatch) {
         title = titleMatch[1];
+        console.log('Raw title extracted:', title);
+        
         // Clean up IMDb title format (remove " - IMDb" suffix)
         title = title.replace(/\s*-\s*IMDb\s*$/i, '');
         
-        // Extract year from title if present
-        const yearMatch = title.match(/\((\d{4})\)/);
+        // Extract year from title if present - handle various formats
+        const yearMatch = title.match(/\((\d{4})(?:-\s*)?\)/);
         if (yearMatch) {
           year = parseInt(yearMatch[1]);
-          title = title.replace(/\s*\(\d{4}\)/, '').trim();
+          // Remove the year parentheses from title
+          title = title.replace(/\s*\(\d{4}(?:-\s*)?\)/, '').trim();
         }
+        
+        // Remove common suffixes that interfere with search
+        title = title.replace(/\s*\|\s*.+$/, ''); // Remove "| Netflix" etc
+        title = title.replace(/\s*-\s*watch\s+.+$/i, ''); // Remove "- Watch online"
+        title = title.replace(/\s*\(TV\s+Series.*?\)$/i, ''); // Remove "(TV Series...)"
+        title = title.replace(/\s*\(.*?\d{4}.*?\)$/i, ''); // Remove any remaining year info
+        title = title.trim();
+        
+        console.log('Cleaned title:', title, 'Year:', year);
       }
       
       // Check if it's a TV series
@@ -127,6 +139,10 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
       const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
       if (ogTitleMatch) {
         title = ogTitleMatch[1];
+        // Clean this title too
+        title = title.replace(/\s*\|\s*.+$/, ''); // Remove "| Netflix" etc
+        title = title.replace(/\s*-\s*watch\s+.+$/i, ''); // Remove "- Watch online"
+        title = title.trim();
       }
     }
     
