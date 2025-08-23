@@ -133,6 +133,50 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
         type = 'tv';
       }
     }
+    // HBO Max/Max specific extraction
+    else if (url.includes('hbomax.com') || url.includes('max.com')) {
+      // Try to extract from URL path first
+      const pathMatch = url.match(/\/(movie|series|mini-series)\/([^\/]+)/);
+      if (pathMatch) {
+        const urlTitle = pathMatch[2];
+        // Convert UUID-style paths to searchable titles
+        if (urlTitle.match(/^[a-f0-9-]{36}$/)) {
+          // This is a UUID, try to get title from page
+          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          if (titleMatch) {
+            title = titleMatch[1];
+            title = title.replace(/\s*\|\s*(HBO|Max).*$/i, '');
+            title = title.replace(/\s*-\s*(HBO|Max).*$/i, '');
+            title = title.replace(/\s*\|\s*Watch.*$/i, '');
+            title = title.replace(/\s*-\s*Watch.*$/i, '');
+            title = title.trim();
+          }
+        } else {
+          title = urlTitle.replace(/-/g, ' ');
+        }
+        
+        // Set type based on URL path
+        if (pathMatch[1] === 'movie') {
+          type = 'movie';
+        } else if (pathMatch[1] === 'series' || pathMatch[1] === 'mini-series') {
+          type = 'tv';
+        }
+        
+        console.log('Extracted from HBO/Max URL:', title, 'Type:', type);
+      }
+      
+      // Also try page title extraction as fallback
+      if (!title) {
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch) {
+          title = titleMatch[1];
+          title = title.replace(/\s*\|\s*(HBO|Max).*$/i, '');
+          title = title.replace(/\s*-\s*(HBO|Max).*$/i, '');
+          title = title.replace(/\s*\|\s*Watch.*$/i, '');
+          title = title.trim();
+        }
+      }
+    }
     // Peacock TV specific extraction
     else if (url.includes('peacocktv.com')) {
       // Try to extract from URL path - Peacock URLs often have the title in the path
