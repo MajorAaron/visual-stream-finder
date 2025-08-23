@@ -262,27 +262,39 @@ async function getGenreNames(genreIds: number[], mediaType: 'movie' | 'tv', apiK
 }
 
 async function getStreamingSources(title: string, year: string, type: string, streamingApiKey?: string): Promise<StreamingSource[]> {
-  // Mock streaming sources for now - in production this would use the Streaming Availability API
+  // Mock streaming sources with proper logos - in production this would use the Streaming Availability API
   const mockSources: StreamingSource[] = [
     {
       name: "Netflix",
-      logo: "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop",
+      logo: "https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png",
       url: "https://netflix.com",
       type: "subscription"
     },
     {
       name: "Amazon Prime Video",
-      logo: "https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?w=40&h=40&fit=crop",
+      logo: "https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png",
       url: "https://primevideo.com",
       type: "rent",
       price: "$3.99"
     },
     {
       name: "Apple TV+",
-      logo: "https://images.unsplash.com/photo-1611605698335-8b1569810432?w=40&h=40&fit=crop",
+      logo: "https://logos-world.net/wp-content/uploads/2021/08/Apple-TV-Logo.png",
       url: "https://tv.apple.com",
       type: "buy",
       price: "$12.99"
+    },
+    {
+      name: "Hulu",
+      logo: "https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png",
+      url: "https://hulu.com",
+      type: "subscription"
+    },
+    {
+      name: "Disney+",
+      logo: "https://logos-world.net/wp-content/uploads/2020/11/Disney-Plus-Logo.png",
+      url: "https://disneyplus.com",
+      type: "subscription"
     }
   ];
 
