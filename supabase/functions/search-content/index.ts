@@ -81,199 +81,244 @@ async function searchByUrl(url: string): Promise<ContentResult[]> {
   console.log('Extracting content from URL:', url);
   
   try {
-    // Fetch the webpage content
-    const response = await fetch(url, {
+    // First, try the AI-powered approach with Firecrawl
+    const intelligentResult = await extractWithAI(url);
+    if (intelligentResult) {
+      return intelligentResult;
+    }
+    
+    // Fallback to traditional HTML parsing
+    console.log('Falling back to HTML parsing...');
+    return await extractWithHTMLParsing(url);
+    
+  } catch (error) {
+    console.error('Error extracting content from URL:', error);
+    // Return empty results instead of throwing to prevent app crashes
+    return [];
+  }
+}
+
+async function extractWithAI(url: string): Promise<ContentResult[] | null> {
+  const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!firecrawlApiKey || !openaiApiKey) {
+    console.log('Firecrawl or OpenAI API key not available, skipping AI extraction');
+    return null;
+  }
+  
+  try {
+    console.log('Using Firecrawl to extract page content...');
+    
+    // Use Firecrawl to get clean page content
+    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      }
+        'Authorization': `Bearer ${firecrawlApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: url,
+        pageOptions: {
+          onlyMainContent: true
+        },
+        extractorOptions: {
+          mode: 'llm-extraction',
+          extractionPrompt: 'Extract the movie or TV show title, year, type (movie/tv), and a brief description from this page'
+        }
+      }),
     });
     
-    if (!response.ok) {
-      throw new Error(`Failed to fetch URL: ${response.status}`);
+    if (!firecrawlResponse.ok) {
+      console.log('Firecrawl failed, status:', firecrawlResponse.status);
+      return null;
     }
     
-    const html = await response.text();
+    const firecrawlData = await firecrawlResponse.json();
+    const pageContent = firecrawlData.data?.content || firecrawlData.data?.markdown || '';
     
-    // Extract title and other info from HTML
-    let title = '';
-    let year = 0;
-    let type: 'movie' | 'tv' | 'documentary' = 'movie';
-    
-    // IMDb specific extraction
-    if (url.includes('imdb.com')) {
-      // Extract title from meta tags or title tag
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleMatch) {
-        title = titleMatch[1];
-        console.log('Raw title extracted:', title);
-        
-        // Clean up IMDb title format (remove " - IMDb" suffix)
-        title = title.replace(/\s*-\s*IMDb\s*$/i, '');
-        
-        // Extract year from title if present - handle various formats
-        const yearMatch = title.match(/\((\d{4})(?:-\s*)?\)/);
-        if (yearMatch) {
-          year = parseInt(yearMatch[1]);
-          // Remove the year parentheses from title
-          title = title.replace(/\s*\(\d{4}(?:-\s*)?\)/, '').trim();
-        }
-        
-        // Remove common suffixes that interfere with search
-        title = title.replace(/\s*\|\s*.+$/, ''); // Remove "| Netflix" etc
-        title = title.replace(/\s*-\s*watch\s+.+$/i, ''); // Remove "- Watch online"
-        title = title.replace(/\s*\(TV\s+Series.*?\)$/i, ''); // Remove "(TV Series...)"
-        title = title.replace(/\s*\(.*?\d{4}.*?\)$/i, ''); // Remove any remaining year info
-        title = title.trim();
-        
-        console.log('Cleaned title:', title, 'Year:', year);
-      }
-      
-      // Check if it's a TV series
-      if (html.includes('"@type":"TVSeries"') || url.includes('/title/') && html.includes('TV Series')) {
-        type = 'tv';
-      }
+    if (!pageContent) {
+      console.log('No content extracted from Firecrawl');
+      return null;
     }
-    // HBO Max/Max specific extraction
-    else if (url.includes('hbomax.com') || url.includes('max.com')) {
-      // Try to extract from URL path first
-      const pathMatch = url.match(/\/(movie|series|mini-series)\/([^\/]+)/);
-      if (pathMatch) {
-        const urlTitle = pathMatch[2];
-        // Convert UUID-style paths to searchable titles
-        if (urlTitle.match(/^[a-f0-9-]{36}$/)) {
-          // This is a UUID, try to get title from page
-          const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-          if (titleMatch) {
-            title = titleMatch[1];
-            title = title.replace(/\s*\|\s*(HBO|Max).*$/i, '');
-            title = title.replace(/\s*-\s*(HBO|Max).*$/i, '');
-            title = title.replace(/\s*\|\s*Watch.*$/i, '');
-            title = title.replace(/\s*-\s*Watch.*$/i, '');
-            title = title.trim();
+    
+    console.log('Using OpenAI to analyze content and extract movie/show info...');
+    
+    // Use OpenAI to intelligently extract movie/show information
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert at extracting movie and TV show information from web page content. 
+            
+            Analyze the provided content and extract:
+            - Title: The exact movie or TV show title
+            - Year: Release year (if available)
+            - Type: "movie", "tv", or "documentary"
+            
+            Respond with ONLY a JSON object in this format:
+            {"title": "Movie Title", "year": 2023, "type": "movie"}
+            
+            If you cannot identify a movie or TV show, respond with:
+            {"error": "No movie or TV show found"}`
+          },
+          {
+            role: 'user',
+            content: `URL: ${url}\n\nPage content:\n${pageContent.substring(0, 4000)}`
           }
-        } else {
-          title = urlTitle.replace(/-/g, ' ');
-        }
-        
-        // Set type based on URL path
-        if (pathMatch[1] === 'movie') {
-          type = 'movie';
-        } else if (pathMatch[1] === 'series' || pathMatch[1] === 'mini-series') {
-          type = 'tv';
-        }
-        
-        console.log('Extracted from HBO/Max URL:', title, 'Type:', type);
+        ],
+        max_tokens: 150,
+        temperature: 0.1
+      }),
+    });
+    
+    if (!openaiResponse.ok) {
+      console.log('OpenAI failed, status:', openaiResponse.status);
+      return null;
+    }
+    
+    const openaiData = await openaiResponse.json();
+    const aiResult = openaiData.choices[0]?.message?.content;
+    
+    if (!aiResult) {
+      console.log('No AI result');
+      return null;
+    }
+    
+    try {
+      const extractedInfo = JSON.parse(aiResult);
+      
+      if (extractedInfo.error) {
+        console.log('AI could not extract movie/show info:', extractedInfo.error);
+        return null;
       }
       
-      // Also try page title extraction as fallback
-      if (!title) {
+      console.log('AI extracted:', extractedInfo);
+      
+      // Search using the AI-extracted title
+      if (extractedInfo.title) {
+        return await searchContent(extractedInfo.title);
+      }
+      
+    } catch (parseError) {
+      console.log('Failed to parse AI response:', parseError);
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('Error in AI extraction:', error);
+    return null;
+  }
+  
+  return null;
+}
+
+async function extractWithHTMLParsing(url: string): Promise<ContentResult[]> {
+  // Fetch the webpage content
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch URL: ${response.status}`);
+  }
+  
+  const html = await response.text();
+  
+  // Extract title and other info from HTML
+  let title = '';
+  let year = 0;
+  let type: 'movie' | 'tv' | 'documentary' = 'movie';
+  
+  // IMDb specific extraction
+  if (url.includes('imdb.com')) {
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      title = titleMatch[1];
+      console.log('Raw title extracted:', title);
+      
+      // Clean up IMDb title format
+      title = title.replace(/\s*-\s*IMDb\s*$/i, '');
+      
+      // Extract year from title if present
+      const yearMatch = title.match(/\((\d{4})(?:-\s*)?\)/);
+      if (yearMatch) {
+        year = parseInt(yearMatch[1]);
+        title = title.replace(/\s*\(\d{4}(?:-\s*)?\)/, '').trim();
+      }
+      
+      // Remove common suffixes
+      title = title.replace(/\s*\|\s*.+$/, '');
+      title = title.replace(/\s*-\s*watch\s+.+$/i, '');
+      title = title.replace(/\s*\(TV\s+Series.*?\)$/i, '');
+      title = title.replace(/\s*\(.*?\d{4}.*?\)$/i, '');
+      title = title.trim();
+      
+      console.log('Cleaned title:', title, 'Year:', year);
+    }
+    
+    // Check if it's a TV series
+    if (html.includes('"@type":"TVSeries"') || url.includes('/title/') && html.includes('TV Series')) {
+      type = 'tv';
+    }
+  }
+  // HBO Max/Max specific extraction
+  else if (url.includes('hbomax.com') || url.includes('max.com')) {
+    const pathMatch = url.match(/\/(movie|series|mini-series)\/([^\/]+)/);
+    if (pathMatch) {
+      const urlTitle = pathMatch[2];
+      if (urlTitle.match(/^[a-f0-9-]{36}$/)) {
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         if (titleMatch) {
           title = titleMatch[1];
           title = title.replace(/\s*\|\s*(HBO|Max).*$/i, '');
           title = title.replace(/\s*-\s*(HBO|Max).*$/i, '');
           title = title.replace(/\s*\|\s*Watch.*$/i, '');
+          title = title.replace(/\s*-\s*Watch.*$/i, '');
           title = title.trim();
         }
-      }
-    }
-    // Peacock TV specific extraction
-    else if (url.includes('peacocktv.com')) {
-      // Try to extract from URL path - Peacock URLs often have the title in the path
-      const pathMatch = url.match(/\/movies\/([^\/]+)\/|\/shows\/([^\/]+)\//);
-      if (pathMatch) {
-        title = (pathMatch[1] || pathMatch[2]).replace(/-/g, ' ');
-        console.log('Extracted from Peacock URL path:', title);
-      }
-      
-      // Also try to extract from page title
-      if (!title) {
-        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        if (titleMatch) {
-          title = titleMatch[1];
-          // Clean up Peacock title format
-          title = title.replace(/\s*\|\s*Peacock.*$/i, '');
-          title = title.replace(/\s*-\s*watch.*$/i, '');
-          title = title.trim();
-        }
-      }
-    }
-    // Hulu specific extraction
-    else if (url.includes('hulu.com')) {
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleMatch) {
-        title = titleMatch[1];
-        // Clean up Hulu title format
-        title = title.replace(/\s*\|\s*Hulu.*$/i, '');
-        title = title.replace(/\s*-\s*watch.*$/i, '');
-        title = title.trim();
-      }
-    }
-    // Netflix specific extraction
-    else if (url.includes('netflix.com')) {
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleMatch) {
-        title = titleMatch[1];
-        // Clean up Netflix title format
-        title = title.replace(/\s*\|\s*Netflix.*$/i, '');
-        title = title.replace(/\s*-\s*watch.*$/i, '');
-        title = title.trim();
-      }
-    }
-    
-    // Generic fallback - try to get title from meta tags
-    if (!title) {
-      const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
-      if (ogTitleMatch) {
-        title = ogTitleMatch[1];
-        // Clean this title too
-        title = title.replace(/\s*\|\s*.+$/, ''); // Remove "| Netflix" etc
-        title = title.replace(/\s*-\s*watch\s+.+$/i, ''); // Remove "- Watch online"
-        title = title.trim();
-      }
-    }
-    
-    // Last resort - try to extract from page title
-    if (!title) {
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleMatch) {
-        title = titleMatch[1];
-        // Generic cleanup
-        title = title.replace(/\s*\|\s*.+$/, ''); // Remove "| Site Name" etc
-        title = title.replace(/\s*-\s*.+$/, ''); // Remove "- Site Name" etc
-        title = title.trim();
-      }
-    }
-    
-    console.log('Final extracted title:', title, 'year:', year, 'type:', type);
-    
-    // If we still couldn't extract a title, try searching with the URL domain as context
-    if (!title || title.length < 2) {
-      const domain = url.match(/https?:\/\/(?:www\.)?([^\/]+)/)?.[1] || '';
-      console.log('Could not extract meaningful title, trying fallback search with domain:', domain);
-      
-      // Try to extract any meaningful text from the URL path as a last resort
-      const pathParts = url.split('/').filter(part => part && !part.includes('.') && part.length > 2);
-      const potentialTitle = pathParts[pathParts.length - 1]?.replace(/-/g, ' ') || '';
-      
-      if (potentialTitle && potentialTitle.length > 2) {
-        title = potentialTitle;
-        console.log('Using URL path as title:', title);
       } else {
-        throw new Error(`Could not extract title from ${domain} URL`);
+        title = urlTitle.replace(/-/g, ' ');
+      }
+      
+      if (pathMatch[1] === 'movie') {
+        type = 'movie';
+      } else if (pathMatch[1] === 'series' || pathMatch[1] === 'mini-series') {
+        type = 'tv';
       }
     }
-    
-    // Now search for the extracted title
-    return await searchContent(title);
-    
-  } catch (error) {
-    console.error('Error extracting content from URL:', error);
-    // Instead of throwing the error, try to search with just the domain context
+  }
+  // Generic extraction for other services
+  else {
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      title = titleMatch[1];
+      // Generic cleanup
+      title = title.replace(/\s*\|\s*.+$/, '');
+      title = title.replace(/\s*-\s*.+$/, '');
+      title = title.trim();
+    }
+  }
+  
+  console.log('Final extracted title:', title, 'year:', year, 'type:', type);
+  
+  if (!title || title.length < 2) {
     const domain = url.match(/https?:\/\/(?:www\.)?([^\/]+)/)?.[1] || 'streaming service';
-    console.log('Fallback: returning empty results for failed URL extraction from', domain);
+    console.log('Could not extract meaningful title from', domain);
     return [];
   }
+  
+  // Search for the extracted title
+  return await searchContent(title);
 }
 
 async function searchContent(query: string): Promise<ContentResult[]> {
