@@ -52,11 +52,22 @@ serve(async (req) => {
     // Check if the query is a URL
     const isUrl = query.trim().match(/^https?:\/\/.+/);
     let results;
+    let sourceService = null;
     
     if (isUrl) {
+      // Extract the streaming service from the URL
+      sourceService = getStreamingServiceFromUrl(query.trim());
       results = await searchByUrl(query.trim());
     } else {
       results = await searchContent(query.trim());
+    }
+    
+    // Add the source service to results if it was detected from a URL
+    if (sourceService && results.length > 0) {
+      results = results.map(result => ({
+        ...result,
+        streamingSources: addSourceServiceToResults(result.streamingSources, sourceService)
+      }));
     }
     
     return new Response(
@@ -76,6 +87,78 @@ serve(async (req) => {
     );
   }
 });
+
+function getStreamingServiceFromUrl(url: string): StreamingSource | null {
+  if (url.includes('hbomax.com') || url.includes('max.com')) {
+    return {
+      name: "HBO Max",
+      logo: "https://logos-world.net/wp-content/uploads/2020/05/HBO-Max-Logo.png",
+      url: "https://hbomax.com",
+      type: "subscription"
+    };
+  }
+  
+  if (url.includes('netflix.com')) {
+    return {
+      name: "Netflix",
+      logo: "https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png",
+      url: "https://netflix.com",
+      type: "subscription"
+    };
+  }
+  
+  if (url.includes('peacocktv.com')) {
+    return {
+      name: "Peacock",
+      logo: "https://logos-world.net/wp-content/uploads/2020/07/Peacock-Logo.png",
+      url: "https://peacocktv.com",
+      type: "subscription"
+    };
+  }
+  
+  if (url.includes('hulu.com')) {
+    return {
+      name: "Hulu",
+      logo: "https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png",
+      url: "https://hulu.com",
+      type: "subscription"
+    };
+  }
+  
+  if (url.includes('primevideo.com') || url.includes('amazon.com')) {
+    return {
+      name: "Amazon Prime Video",
+      logo: "https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png",
+      url: "https://primevideo.com",
+      type: "subscription"
+    };
+  }
+  
+  if (url.includes('disneyplus.com')) {
+    return {
+      name: "Disney+",
+      logo: "https://logos-world.net/wp-content/uploads/2020/11/Disney-Plus-Logo.png",
+      url: "https://disneyplus.com",
+      type: "subscription"
+    };
+  }
+  
+  return null;
+}
+
+function addSourceServiceToResults(existingSources: StreamingSource[], sourceService: StreamingSource): StreamingSource[] {
+  // Check if the source service is already in the list
+  const serviceExists = existingSources.some(source => 
+    source.name.toLowerCase() === sourceService.name.toLowerCase()
+  );
+  
+  if (!serviceExists) {
+    // Add the source service as the first item
+    return [sourceService, ...existingSources];
+  }
+  
+  return existingSources;
+}
 
 async function searchByUrl(url: string): Promise<ContentResult[]> {
   console.log('Extracting content from URL:', url);
