@@ -49,7 +49,7 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-secondary/20 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md md:max-w-lg lg:max-w-xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">AI Watchlist</CardTitle>
           <CardDescription>
