@@ -81,11 +81,19 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
 
   const handleTextSearch = () => {
     if (!searchText.trim()) {
-      toast.error('Please enter a movie or TV show title to search.');
+      toast.error('Please enter a movie/TV show title or URL to search.');
       return;
     }
-    onTextSearch(searchText.trim());
-    toast.success('Searching for content...');
+    
+    // Check if input is a URL
+    const isUrl = searchText.trim().match(/^https?:\/\/.+/);
+    if (isUrl) {
+      onTextSearch(searchText.trim());
+      toast.success('Extracting content from URL...');
+    } else {
+      onTextSearch(searchText.trim());
+      toast.success('Searching for content...');
+    }
   };
 
   const handleTextInputKeyPress = (e: React.KeyboardEvent) => {
@@ -180,7 +188,7 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
           <div className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder="e.g. The Matrix, Stranger Things, Breaking Bad..."
+                placeholder="e.g. The Matrix, https://www.imdb.com/title/tt0133093/, Stranger Things..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 onKeyPress={handleTextInputKeyPress}
@@ -198,7 +206,7 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
             </div>
             
             <div className="text-xs text-muted-foreground text-center">
-              Perfect for when you know the title or want to search from shared text
+              Perfect for titles, IMDb URLs, or any shared links about movies and shows
             </div>
           </div>
         </TabsContent>

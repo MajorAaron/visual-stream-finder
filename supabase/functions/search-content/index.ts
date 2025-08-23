@@ -49,7 +49,15 @@ serve(async (req) => {
 
     console.log('Searching for:', query);
 
-    const results = await searchContent(query.trim());
+    // Check if the query is a URL
+    const isUrl = query.trim().match(/^https?:\/\/.+/);
+    let results;
+    
+    if (isUrl) {
+      results = await searchByUrl(query.trim());
+    } else {
+      results = await searchContent(query.trim());
+    }
     
     return new Response(
       JSON.stringify({ results }),
@@ -68,6 +76,74 @@ serve(async (req) => {
     );
   }
 });
+
+async function searchByUrl(url: string): Promise<ContentResult[]> {
+  console.log('Extracting content from URL:', url);
+  
+  try {
+    // Fetch the webpage content
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch URL: ${response.status}`);
+    }
+    
+    const html = await response.text();
+    
+    // Extract title and other info from HTML
+    let title = '';
+    let year = 0;
+    let type: 'movie' | 'tv' | 'documentary' = 'movie';
+    
+    // IMDb specific extraction
+    if (url.includes('imdb.com')) {
+      // Extract title from meta tags or title tag
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleMatch) {
+        title = titleMatch[1];
+        // Clean up IMDb title format (remove " - IMDb" suffix)
+        title = title.replace(/\s*-\s*IMDb\s*$/i, '');
+        
+        // Extract year from title if present
+        const yearMatch = title.match(/\((\d{4})\)/);
+        if (yearMatch) {
+          year = parseInt(yearMatch[1]);
+          title = title.replace(/\s*\(\d{4}\)/, '').trim();
+        }
+      }
+      
+      // Check if it's a TV series
+      if (html.includes('"@type":"TVSeries"') || url.includes('/title/') && html.includes('TV Series')) {
+        type = 'tv';
+      }
+    }
+    
+    // If we couldn't extract a title, try to get it from other meta tags
+    if (!title) {
+      const ogTitleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
+      if (ogTitleMatch) {
+        title = ogTitleMatch[1];
+      }
+    }
+    
+    console.log('Extracted title:', title, 'year:', year, 'type:', type);
+    
+    if (!title) {
+      throw new Error('Could not extract title from URL');
+    }
+    
+    // Now search for the extracted title
+    return await searchContent(title);
+    
+  } catch (error) {
+    console.error('Error extracting content from URL:', error);
+    throw error;
+  }
+}
 
 async function searchContent(query: string): Promise<ContentResult[]> {
   const tmdbApiKey = Deno.env.get('TMDB_API_KEY');
