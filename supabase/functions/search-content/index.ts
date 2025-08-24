@@ -506,43 +506,141 @@ async function getGenreNames(genreIds: number[], mediaType: 'movie' | 'tv', apiK
 }
 
 async function getStreamingSources(title: string, year: string, type: string, streamingApiKey?: string): Promise<StreamingSource[]> {
-  // Mock streaming sources with proper logos - in production this would use the Streaming Availability API
-  const mockSources: StreamingSource[] = [
+  console.log(`Getting streaming sources for: ${title} (${year}) - ${type}`);
+  
+  if (!streamingApiKey) {
+    console.log('No streaming API key provided, using fallback search links');
+    return getFallbackStreamingSources(title);
+  }
+
+  try {
+    // Search for the title using the shows/search/title endpoint
+    const searchType = type === 'tv' ? 'series' : 'movie';
+    const searchUrl = `https://streaming-availability.p.rapidapi.com/shows/search/title?title=${encodeURIComponent(title)}&country=us&show_type=${searchType}&output_language=en`;
+    
+    console.log(`Calling Streaming Availability API: ${searchUrl}`);
+    
+    const searchResponse = await fetch(searchUrl, {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': streamingApiKey,
+        'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
+      }
+    });
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error(`Streaming API error: ${searchResponse.status} ${errorText}`);
+      console.log('Using fallback search links (no API key or API failed)');
+      return getFallbackStreamingSources(title);
+    }
+
+    const searchData = await searchResponse.json();
+    console.log('Streaming API search results:', searchData.length || 0, 'shows found');
+    
+    if (!searchData || searchData.length === 0) {
+      console.log('No streaming results found, using fallback');
+      return getFallbackStreamingSources(title);
+    }
+
+    // Find the best match (exact title and year match preferred)
+    let bestMatch = searchData[0];
+    if (year) {
+      const yearNum = parseInt(year);
+      for (const show of searchData) {
+        const showYear = show.firstAirYear || show.releaseYear;
+        if (showYear === yearNum) {
+          bestMatch = show;
+          break;
+        }
+      }
+    }
+
+    const sources: StreamingSource[] = [];
+    
+    if (bestMatch.streamingInfo) {
+      for (const [platform, platformData] of Object.entries(bestMatch.streamingInfo)) {
+        const streamingData = platformData as any;
+        if (streamingData && Array.isArray(streamingData) && streamingData.length > 0) {
+          const firstOption = streamingData[0];
+          
+          sources.push({
+            name: getPlatformDisplayName(platform),
+            logo: getPlatformLogo(platform),
+            url: firstOption.link || `https://${platform}.com`,
+            type: firstOption.streamingType || 'subscription',
+            price: firstOption.price ? `$${firstOption.price.amount}` : undefined
+          });
+        }
+      }
+    }
+
+    console.log(`Found ${sources.length} streaming sources`);
+    return sources.length > 0 ? sources : getFallbackStreamingSources(title);
+    
+  } catch (error) {
+    console.error('Error fetching streaming sources:', error);
+    console.log('Using fallback search links due to error');
+    return getFallbackStreamingSources(title);
+  }
+}
+
+function getPlatformDisplayName(platform: string): string {
+  const platformNames: { [key: string]: string } = {
+    'netflix': 'Netflix',
+    'hulu': 'Hulu',
+    'prime': 'Amazon Prime Video',
+    'disney': 'Disney+',
+    'hbo': 'HBO Max',
+    'apple': 'Apple TV+',
+    'paramount': 'Paramount+',
+    'peacock': 'Peacock',
+    'showtime': 'Showtime',
+    'starz': 'Starz'
+  };
+  
+  return platformNames[platform.toLowerCase()] || platform;
+}
+
+function getPlatformLogo(platform: string): string {
+  const platformLogos: { [key: string]: string } = {
+    'netflix': 'https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png',
+    'hulu': 'https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png',
+    'prime': 'https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png',
+    'disney': 'https://logos-world.net/wp-content/uploads/2020/11/Disney-Plus-Logo.png',
+    'hbo': 'https://logos-world.net/wp-content/uploads/2020/06/HBO-Max-Logo.png',
+    'apple': 'https://logos-world.net/wp-content/uploads/2021/08/Apple-TV-Logo.png',
+    'paramount': 'https://logos-world.net/wp-content/uploads/2021/08/Paramount-Plus-Logo.png',
+    'peacock': 'https://seeklogo.com/images/P/peacock-logo-18A53E42A1-seeklogo.com.png',
+    'showtime': 'https://logos-world.net/wp-content/uploads/2021/02/Showtime-Logo.png',
+    'starz': 'https://logos-world.net/wp-content/uploads/2021/02/Starz-Logo.png'
+  };
+  
+  return platformLogos[platform.toLowerCase()] || 'https://via.placeholder.com/40x40?text=' + platform.charAt(0).toUpperCase();
+}
+
+function getFallbackStreamingSources(title: string): StreamingSource[] {
+  // Fallback: return search links for major platforms
+  const searchQuery = encodeURIComponent(title);
+  
+  return [
     {
       name: "Netflix",
       logo: "https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png",
-      url: "https://netflix.com",
+      url: `https://www.netflix.com/search?q=${searchQuery}`,
       type: "subscription"
     },
     {
       name: "Amazon Prime Video",
       logo: "https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png",
-      url: "https://primevideo.com",
-      type: "rent",
-      price: "$3.99"
-    },
-    {
-      name: "Apple TV+",
-      logo: "https://logos-world.net/wp-content/uploads/2021/08/Apple-TV-Logo.png",
-      url: "https://tv.apple.com",
-      type: "buy",
-      price: "$12.99"
+      url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${searchQuery}`,
+      type: "subscription"
     },
     {
       name: "Hulu",
       logo: "https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png",
-      url: "https://hulu.com",
-      type: "subscription"
-    },
-    {
-      name: "Disney+",
-      logo: "https://logos-world.net/wp-content/uploads/2020/11/Disney-Plus-Logo.png",
-      url: "https://disneyplus.com",
+      url: `https://www.hulu.com/search?q=${searchQuery}`,
       type: "subscription"
     }
   ];
-
-  // Randomly return 1-3 sources to simulate real data
-  const numSources = Math.floor(Math.random() * 3) + 1;
-  return mockSources.slice(0, numSources);
 }
