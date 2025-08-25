@@ -8,8 +8,8 @@ const urlsToCache = [
   BASE_PATH + '/',
   BASE_PATH + '/index.html',
   BASE_PATH + '/manifest.json',
-  BASE_PATH + '/icon-192.svg',
-  BASE_PATH + '/icon-512.svg'
+  BASE_PATH + '/icon-192.png',
+  BASE_PATH + '/icon-512.png'
 ];
 
 // Install event - cache assets
@@ -49,13 +49,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   
   // Handle share target endpoint
-  if (request.method === 'POST' && url.pathname === '/share-target') {
+  const shareTargetPath = BASE_PATH + '/share-target';
+  if (request.method === 'POST' && (url.pathname === shareTargetPath || url.pathname === '/share-target')) {
     event.respondWith(handleSharedContent(request));
     return;
   }
   
   // Handle GET requests for share target (text/URL shares)
-  if (request.method === 'GET' && url.pathname === '/share-target') {
+  if (request.method === 'GET' && (url.pathname === shareTargetPath || url.pathname === '/share-target')) {
     event.respondWith(handleSharedText(request));
     return;
   }
@@ -107,7 +108,7 @@ async function handleSharedContent(request) {
       await storeSharedImage(base64, mimeType, { title, text, url });
       
       // Redirect to app with share flag
-      return Response.redirect('/?action=shared-image', 303);
+      return Response.redirect(BASE_PATH + '/?action=shared-image', 303);
     } else if (url || text) {
       // Handle text/URL share
       const params = new URLSearchParams();
@@ -115,15 +116,15 @@ async function handleSharedContent(request) {
       if (text) params.set('text', text);
       if (title) params.set('title', title);
       
-      return Response.redirect(`/?action=shared-text&${params.toString()}`, 303);
+      return Response.redirect(`${BASE_PATH}/?action=shared-text&${params.toString()}`, 303);
     }
     
     // No valid content to share
-    return Response.redirect('/?action=share-error', 303);
+    return Response.redirect(BASE_PATH + '/?action=share-error', 303);
     
   } catch (error) {
     console.error('Error handling shared content:', error);
-    return Response.redirect('/?action=share-error', 303);
+    return Response.redirect(BASE_PATH + '/?action=share-error', 303);
   }
 }
 
@@ -146,11 +147,11 @@ async function handleSharedText(request) {
     if (title) appParams.set('title', title);
     appParams.set('action', 'shared-text');
     
-    return Response.redirect(`/?${appParams.toString()}`, 303);
+    return Response.redirect(`${BASE_PATH}/?${appParams.toString()}`, 303);
     
   } catch (error) {
     console.error('Error handling shared text:', error);
-    return Response.redirect('/?action=share-error', 303);
+    return Response.redirect(BASE_PATH + '/?action=share-error', 303);
   }
 }
 
