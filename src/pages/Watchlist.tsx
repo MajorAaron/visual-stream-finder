@@ -36,15 +36,12 @@ const isDarkLogo = (serviceName: string) => {
 };
 
 export default function Watchlist() {
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, signOut } = useAuth();
   const { watchlist, loading, removeFromWatchlist, markAsWatched } = useWatchlist();
 
-  // Redirect to auth page if not logged in
-  if (!authLoading && !user) {
-    return <Navigate to="/auth" replace />;
-  }
+  // Auth is now handled by ProtectedRoute wrapper
 
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

@@ -29,25 +29,16 @@ interface DetectedContent {
 }
 
 const Index = () => {
-  const { user, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [appState, setAppState] = useState<AppState>('upload');
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('analyzing');
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<DetectedContent[]>([]);
 
-  // Show loading screen while checking auth
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  // Redirect to auth if not logged in
+  // Auth is now handled by ProtectedRoute wrapper
   if (!user) {
-    return <Navigate to="/auth" replace />;
+    return null; // This shouldn't happen as ProtectedRoute handles it
   }
 
   const handleImageUpload = async (file: File) => {

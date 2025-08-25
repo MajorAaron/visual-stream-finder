@@ -46,15 +46,11 @@ export default function Profile() {
   }, [user, toast]);
 
   useEffect(() => {
-    // Don't redirect while auth is still loading
-    if (authLoading) return;
-    
-    if (!user) {
-      navigate('/auth');
-      return;
+    // Auth is now handled by ProtectedRoute wrapper
+    if (user) {
+      loadProfile();
     }
-    loadProfile();
-  }, [user, authLoading, navigate, loadProfile]);
+  }, [user, loadProfile]);
 
   const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);

@@ -69,7 +69,7 @@ export const useAuth = () => {
   const signUpWithEmail = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -86,10 +86,19 @@ export const useAuth = () => {
       return { error };
     }
     
-    toast({
-      title: "Check your email",
-      description: "We've sent you a confirmation link to complete your registration.",
-    });
+    // If user is immediately confirmed (email verification disabled)
+    if (data?.user && data?.session) {
+      toast({
+        title: "Welcome!",
+        description: "Your account has been created successfully.",
+      });
+    } else {
+      // Fallback for when email verification is enabled
+      toast({
+        title: "Check your email",
+        description: "We've sent you a confirmation link to complete your registration.",
+      });
+    }
     
     return { error: null };
   };
