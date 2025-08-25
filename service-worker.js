@@ -1,11 +1,15 @@
 // Service Worker for AI Watchlist PWA
 const CACHE_NAME = 'ai-watchlist-v1';
+
+// Get the base path for GitHub Pages deployment
+const BASE_PATH = self.location.pathname.replace('/service-worker.js', '');
+
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.svg',
-  '/icon-512.svg'
+  BASE_PATH + '/',
+  BASE_PATH + '/index.html',
+  BASE_PATH + '/manifest.json',
+  BASE_PATH + '/icon-192.svg',
+  BASE_PATH + '/icon-512.svg'
 ];
 
 // Install event - cache assets
