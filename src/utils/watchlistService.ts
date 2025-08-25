@@ -24,26 +24,41 @@ export interface WatchlistItem {
 export class WatchlistService {
   static async addToWatchlist(content: DetectedContent): Promise<{ success: boolean; error?: string }> {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Adding to watchlist for user:', user?.id);
+      
+      if (!user) {
+        console.error('No authenticated user');
+        return { success: false, error: 'You must be logged in to add to watchlist' };
+      }
+
+      const insertData = {
+        title: content.title,
+        year: content.year,
+        type: content.type,
+        genre: content.genre,
+        rating: content.rating,
+        runtime: content.runtime,
+        plot: content.plot,
+        poster: content.poster,
+        streaming_sources: content.streamingSources as any,
+        confidence: content.confidence,
+        user_id: user.id,
+        watched: false,
+        ...(content.type === 'youtube' && {
+          youtube_url: content.youtubeUrl,
+          channel_name: content.channelName
+        })
+      };
+
+      console.log('Inserting watchlist item:', insertData);
+
       const { data, error } = await supabase
         .from('watchlist')
-        .insert({
-          title: content.title,
-          year: content.year,
-          type: content.type,
-          genre: content.genre,
-          rating: content.rating,
-          runtime: content.runtime,
-          plot: content.plot,
-          poster: content.poster,
-          streaming_sources: content.streamingSources as any,
-          confidence: content.confidence,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          watched: false,
-          ...(content.type === 'youtube' && {
-            youtube_url: content.youtubeUrl,
-            channel_name: content.channelName
-          })
-        });
+        .insert(insertData)
+        .select();
+
+      console.log('Insert result:', { data, error });
 
       if (error) {
         console.error('Error adding to watchlist:', error);
@@ -79,11 +94,22 @@ export class WatchlistService {
 
   static async getWatchlist(): Promise<{ data: WatchlistItem[]; error?: string }> {
     try {
+      // First check if user is authenticated
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user?.id, user?.email);
+      
+      if (!user) {
+        console.log('No authenticated user found');
+        return { data: [], error: 'Not authenticated' };
+      }
+
       const { data, error } = await supabase
         .from('watchlist')
         .select('*')
         .eq('watched', false)
         .order('created_at', { ascending: false });
+
+      console.log('Watchlist query result:', { data, error });
 
       if (error) {
         console.error('Error fetching watchlist:', error);

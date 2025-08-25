@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/SearchInput';
 import { LoadingScreen } from '@/components/LoadingScreen';
@@ -30,6 +30,7 @@ interface DetectedContent {
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [appState, setAppState] = useState<AppState>('upload');
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('analyzing');
   const [progress, setProgress] = useState(0);
@@ -140,11 +141,14 @@ const Index = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
-              <Button asChild variant="outline" size="sm">
-                <Link to="/watchlist">My Watchlist</Link>
+              <Button onClick={() => navigate('/profile')} variant="outline" size="sm">
+                Profile
               </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link to="/watched">Watched</Link>
+              <Button onClick={() => navigate('/watchlist')} variant="outline" size="sm">
+                My Watchlist
+              </Button>
+              <Button onClick={() => navigate('/watched')} variant="outline" size="sm">
+                Watched
               </Button>
               <Button onClick={signOut} variant="outline" size="sm">
                 Sign Out

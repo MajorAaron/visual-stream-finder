@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getStreamingServiceIcon } from "../streaming-icons.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,61 +90,38 @@ serve(async (req) => {
 });
 
 function getStreamingServiceFromUrl(url: string): StreamingSource | null {
+  let serviceId = '';
+  let serviceUrl = '';
+  
   if (url.includes('hbomax.com') || url.includes('max.com')) {
-    return {
-      name: "HBO Max",
-      logo: "https://logos-world.net/wp-content/uploads/2020/05/HBO-Max-Logo.png",
-      url: "https://hbomax.com",
-      type: "subscription"
-    };
+    serviceId = 'max';
+    serviceUrl = 'https://max.com';
+  } else if (url.includes('netflix.com')) {
+    serviceId = 'netflix';
+    serviceUrl = 'https://netflix.com';
+  } else if (url.includes('peacocktv.com')) {
+    serviceId = 'peacock';
+    serviceUrl = 'https://peacocktv.com';
+  } else if (url.includes('hulu.com')) {
+    serviceId = 'hulu';
+    serviceUrl = 'https://hulu.com';
+  } else if (url.includes('primevideo.com') || url.includes('amazon.com')) {
+    serviceId = 'prime';
+    serviceUrl = 'https://primevideo.com';
+  } else if (url.includes('disneyplus.com')) {
+    serviceId = 'disney';
+    serviceUrl = 'https://disneyplus.com';
+  } else {
+    return null;
   }
   
-  if (url.includes('netflix.com')) {
-    return {
-      name: "Netflix",
-      logo: "https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png",
-      url: "https://netflix.com",
-      type: "subscription"
-    };
-  }
-  
-  if (url.includes('peacocktv.com')) {
-    return {
-      name: "Peacock",
-      logo: "https://logos-world.net/wp-content/uploads/2020/07/Peacock-Logo.png",
-      url: "https://peacocktv.com",
-      type: "subscription"
-    };
-  }
-  
-  if (url.includes('hulu.com')) {
-    return {
-      name: "Hulu",
-      logo: "https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png",
-      url: "https://hulu.com",
-      type: "subscription"
-    };
-  }
-  
-  if (url.includes('primevideo.com') || url.includes('amazon.com')) {
-    return {
-      name: "Amazon Prime Video",
-      logo: "https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png",
-      url: "https://primevideo.com",
-      type: "subscription"
-    };
-  }
-  
-  if (url.includes('disneyplus.com')) {
-    return {
-      name: "Disney+",
-      logo: "https://logos-world.net/wp-content/uploads/2020/11/Disney-Plus-Logo.png",
-      url: "https://disneyplus.com",
-      type: "subscription"
-    };
-  }
-  
-  return null;
+  const icon = getStreamingServiceIcon(serviceId);
+  return {
+    name: icon.name,
+    logo: icon.logo,
+    url: serviceUrl,
+    type: 'subscription'
+  };
 }
 
 function addSourceServiceToResults(existingSources: StreamingSource[], sourceService: StreamingSource): StreamingSource[] {
@@ -427,7 +405,9 @@ async function searchContent(query: string): Promise<ContentResult[]> {
       
       if (movieData.results && movieData.results.length > 0) {
         for (const movie of movieData.results.slice(0, 3)) { // Limit to top 3 results
-          const streamingSources = await getStreamingSources(movie.title, movie.release_date?.split('-')[0] || '', 'movie', streamingApiKey);
+          // Get IMDB ID for the movie
+          const imdbId = await getImdbId(movie.id, 'movie', tmdbApiKey);
+          const streamingSources = await getStreamingSources(movie.title, movie.release_date?.split('-')[0] || '', 'movie', streamingApiKey, imdbId);
           
           results.push({
             title: movie.title,
@@ -456,7 +436,9 @@ async function searchContent(query: string): Promise<ContentResult[]> {
       
       if (tvData.results && tvData.results.length > 0) {
         for (const show of tvData.results.slice(0, 3)) { // Limit to top 3 results
-          const streamingSources = await getStreamingSources(show.name, show.first_air_date?.split('-')[0] || '', 'tv', streamingApiKey);
+          // Get IMDB ID for the TV show
+          const imdbId = await getImdbId(show.id, 'tv', tmdbApiKey);
+          const streamingSources = await getStreamingSources(show.name, show.first_air_date?.split('-')[0] || '', 'tv', streamingApiKey, imdbId);
           
           results.push({
             title: show.name,
@@ -487,6 +469,24 @@ async function searchContent(query: string): Promise<ContentResult[]> {
   }
 }
 
+async function getImdbId(tmdbId: number, mediaType: 'movie' | 'tv', apiKey: string): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/external_ids?api_key=${apiKey}`
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`IMDB ID for ${mediaType} ${tmdbId}:`, data.imdb_id);
+      return data.imdb_id || null;
+    }
+  } catch (error) {
+    console.error('Error fetching IMDB ID:', error);
+  }
+  
+  return null;
+}
+
 async function getGenreNames(genreIds: number[], mediaType: 'movie' | 'tv', apiKey: string): Promise<string[]> {
   try {
     const response = await fetch(
@@ -505,142 +505,204 @@ async function getGenreNames(genreIds: number[], mediaType: 'movie' | 'tv', apiK
   return [];
 }
 
-async function getStreamingSources(title: string, year: string, type: string, streamingApiKey?: string): Promise<StreamingSource[]> {
-  console.log(`Getting streaming sources for: ${title} (${year}) - ${type}`);
+async function getStreamingSources(title: string, year: string, type: string, streamingApiKey?: string, imdbId?: string | null): Promise<StreamingSource[]> {
+  console.log(`Getting streaming sources for: ${title} (${year}) - ${type} - IMDB: ${imdbId}`);
   
-  if (!streamingApiKey) {
-    console.log('No streaming API key provided, using fallback search links');
-    return getFallbackStreamingSources(title);
-  }
+  // If we have a RapidAPI key, use the real Streaming Availability API
+  const rapidApiKey = streamingApiKey || Deno.env.get('STREAMING_AVAILABILITY_API_KEY') || Deno.env.get('RAPIDAPI_KEY');
+  
+  if (rapidApiKey && imdbId) {
+    try {
+      // Use the IMDB ID directly with the shows endpoint
+      const showUrl = `https://streaming-availability.p.rapidapi.com/shows/${imdbId}`;
+      const params = new URLSearchParams({
+        country: 'us', // US streaming services
+        output_language: 'en'
+      });
 
-  try {
-    // Search for the title using the shows/search/title endpoint
-    const searchType = type === 'tv' ? 'series' : 'movie';
-    const searchUrl = `https://streaming-availability.p.rapidapi.com/shows/search/title?title=${encodeURIComponent(title)}&country=us&show_type=${searchType}&output_language=en`;
-    
-    console.log(`Calling Streaming Availability API: ${searchUrl}`);
-    
-    const searchResponse = await fetch(searchUrl, {
-      method: 'GET',
-      headers: {
-        'X-RapidAPI-Key': streamingApiKey,
-        'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
-      }
-    });
-
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error(`Streaming API error: ${searchResponse.status} ${errorText}`);
-      console.log('Using fallback search links (no API key or API failed)');
-      return getFallbackStreamingSources(title);
-    }
-
-    const searchData = await searchResponse.json();
-    console.log('Streaming API search results:', searchData.length || 0, 'shows found');
-    
-    if (!searchData || searchData.length === 0) {
-      console.log('No streaming results found, using fallback');
-      return getFallbackStreamingSources(title);
-    }
-
-    // Find the best match (exact title and year match preferred)
-    let bestMatch = searchData[0];
-    if (year) {
-      const yearNum = parseInt(year);
-      for (const show of searchData) {
-        const showYear = show.firstAirYear || show.releaseYear;
-        if (showYear === yearNum) {
-          bestMatch = show;
-          break;
+      console.log('Calling Streaming Availability API with IMDB ID:', showUrl);
+      
+      const response = await fetch(`${showUrl}?${params}`, {
+        method: 'GET',
+        headers: {
+          'X-RapidAPI-Key': rapidApiKey,
+          'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
         }
-      }
-    }
+      });
 
-    const sources: StreamingSource[] = [];
-    
-    if (bestMatch.streamingInfo) {
-      for (const [platform, platformData] of Object.entries(bestMatch.streamingInfo)) {
-        const streamingData = platformData as any;
-        if (streamingData && Array.isArray(streamingData) && streamingData.length > 0) {
-          const firstOption = streamingData[0];
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Streaming API response:', data);
+        
+        // Parse the response and extract streaming sources
+        const sources: StreamingSource[] = [];
+        
+        // The direct IMDB endpoint returns the show object directly, not in a result array
+        if (data && data.streamingOptions && data.streamingOptions.us) {
+          // Process US streaming options
+          for (const option of data.streamingOptions.us) {
+            // Get service icon and details from our mapping
+            const serviceName = option.service?.id || '';
+            const icon = getStreamingServiceIcon(serviceName);
+
+            // Determine the type and price based on the option type
+            let streamType: 'subscription' | 'rent' | 'buy' | 'free' = 'subscription';
+            let price: string | undefined = undefined;
+            
+            if (option.type === 'subscription') {
+              streamType = 'subscription';
+            } else if (option.type === 'rent') {
+              streamType = 'rent';
+              price = option.price ? `$${option.price.amount}` : undefined;
+            } else if (option.type === 'buy') {
+              streamType = 'buy';
+              price = option.price ? `$${option.price.amount}` : undefined;
+            } else if (option.type === 'free') {
+              streamType = 'free';
+            }
+            
+            // Check if we already have this service/type combination
+            const existingSource = sources.find(s => 
+              s.name === icon.name && s.type === streamType
+            );
+            
+            if (!existingSource) {
+              sources.push({
+                name: icon.name,
+                logo: icon.logo,
+                url: option.link || `https://www.${serviceName}.com`,
+                type: streamType,
+                price: price
+              });
+            }
+          }
+        }
+        
+        if (sources.length > 0) {
+          console.log(`Found ${sources.length} streaming sources from API`);
+          return sources;
+        }
+      } else {
+        console.log('Streaming API error:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error('Error calling Streaming Availability API:', error);
+    }
+  }
+  
+  // If no IMDB ID or API call failed, try the title search as fallback
+  if (rapidApiKey && !imdbId) {
+    try {
+      const searchUrl = `https://streaming-availability.p.rapidapi.com/search/title`;
+      const params = new URLSearchParams({
+        title: title,
+        country: 'us',
+        show_type: type === 'tv' ? 'series' : 'movie',
+        output_language: 'en'
+      });
+
+      console.log('Falling back to title search:', searchUrl);
+      
+      const response = await fetch(`${searchUrl}?${params}`, {
+        method: 'GET',
+        headers: {
+          'X-RapidAPI-Key': rapidApiKey,
+          'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Title search response:', data);
+        
+        const sources: StreamingSource[] = [];
+        
+        if (data.result && data.result.length > 0) {
+          const show = data.result[0];
           
-          sources.push({
-            name: getPlatformDisplayName(platform),
-            logo: getPlatformLogo(platform),
-            url: firstOption.link || `https://${platform}.com`,
-            type: firstOption.streamingType || 'subscription',
-            price: firstOption.price ? `$${firstOption.price.amount}` : undefined
-          });
+          if (show.streamingOptions && show.streamingOptions.us) {
+            for (const option of show.streamingOptions.us) {
+              const serviceName = option.service?.id || '';
+              const icon = getStreamingServiceIcon(serviceName);
+
+              let streamType: 'subscription' | 'rent' | 'buy' | 'free' = 'subscription';
+              let price: string | undefined = undefined;
+              
+              if (option.type === 'subscription') {
+                streamType = 'subscription';
+              } else if (option.type === 'rent') {
+                streamType = 'rent';
+                price = option.price ? `$${option.price.amount}` : undefined;
+              } else if (option.type === 'buy') {
+                streamType = 'buy';
+                price = option.price ? `$${option.price.amount}` : undefined;
+              } else if (option.type === 'free') {
+                streamType = 'free';
+              }
+              
+              const existingSource = sources.find(s => 
+                s.name === icon.name && s.type === streamType
+              );
+              
+              if (!existingSource) {
+                sources.push({
+                  name: icon.name,
+                  logo: icon.logo,
+                  url: option.link || `https://www.${serviceName}.com`,
+                  type: streamType,
+                  price: price
+                });
+              }
+            }
+          }
+        }
+        
+        if (sources.length > 0) {
+          console.log(`Found ${sources.length} streaming sources from title search`);
+          return sources;
         }
       }
+    } catch (error) {
+      console.error('Error with title search fallback:', error);
     }
-
-    console.log(`Found ${sources.length} streaming sources`);
-    return sources.length > 0 ? sources : getFallbackStreamingSources(title);
-    
-  } catch (error) {
-    console.error('Error fetching streaming sources:', error);
-    console.log('Using fallback search links due to error');
-    return getFallbackStreamingSources(title);
   }
-}
-
-function getPlatformDisplayName(platform: string): string {
-  const platformNames: { [key: string]: string } = {
-    'netflix': 'Netflix',
-    'hulu': 'Hulu',
-    'prime': 'Amazon Prime Video',
-    'disney': 'Disney+',
-    'hbo': 'HBO Max',
-    'apple': 'Apple TV+',
-    'paramount': 'Paramount+',
-    'peacock': 'Peacock',
-    'showtime': 'Showtime',
-    'starz': 'Starz'
-  };
   
-  return platformNames[platform.toLowerCase()] || platform;
-}
-
-function getPlatformLogo(platform: string): string {
-  const platformLogos: { [key: string]: string } = {
-    'netflix': 'https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png',
-    'hulu': 'https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png',
-    'prime': 'https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png',
-    'disney': 'https://logos-world.net/wp-content/uploads/2020/11/Disney-Plus-Logo.png',
-    'hbo': 'https://logos-world.net/wp-content/uploads/2020/06/HBO-Max-Logo.png',
-    'apple': 'https://logos-world.net/wp-content/uploads/2021/08/Apple-TV-Logo.png',
-    'paramount': 'https://logos-world.net/wp-content/uploads/2021/08/Paramount-Plus-Logo.png',
-    'peacock': 'https://seeklogo.com/images/P/peacock-logo-18A53E42A1-seeklogo.com.png',
-    'showtime': 'https://logos-world.net/wp-content/uploads/2021/02/Showtime-Logo.png',
-    'starz': 'https://logos-world.net/wp-content/uploads/2021/02/Starz-Logo.png'
-  };
-  
-  return platformLogos[platform.toLowerCase()] || 'https://via.placeholder.com/40x40?text=' + platform.charAt(0).toUpperCase();
-}
-
-function getFallbackStreamingSources(title: string): StreamingSource[] {
-  // Fallback: return search links for major platforms
+  // Fallback: Generate search-based deep links if API fails or no key
+  console.log('Using fallback search links (no API key or API failed)');
   const searchQuery = encodeURIComponent(title);
   
-  return [
-    {
-      name: "Netflix",
-      logo: "https://logos-world.net/wp-content/uploads/2020/04/Netflix-Logo.png",
-      url: `https://www.netflix.com/search?q=${searchQuery}`,
-      type: "subscription"
-    },
-    {
-      name: "Amazon Prime Video",
-      logo: "https://logos-world.net/wp-content/uploads/2021/08/Amazon-Prime-Video-Logo.png",
-      url: `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${searchQuery}`,
-      type: "subscription"
-    },
-    {
-      name: "Hulu",
-      logo: "https://logos-world.net/wp-content/uploads/2020/06/Hulu-Logo.png",
-      url: `https://www.hulu.com/search?q=${searchQuery}`,
-      type: "subscription"
+  const fallbackServices = ['netflix', 'prime', 'disney', 'max', 'hulu'];
+  const fallbackSources: StreamingSource[] = [];
+  
+  for (const serviceId of fallbackServices.slice(0, Math.floor(Math.random() * 3) + 2)) {
+    const icon = getStreamingServiceIcon(serviceId);
+    let searchUrl = '';
+    
+    switch(serviceId) {
+      case 'netflix':
+        searchUrl = `https://www.netflix.com/search?q=${searchQuery}`;
+        break;
+      case 'prime':
+        searchUrl = `https://www.amazon.com/s?k=${searchQuery}&i=instant-video`;
+        break;
+      case 'disney':
+        searchUrl = `https://www.disneyplus.com/search?q=${searchQuery}`;
+        break;
+      case 'max':
+        searchUrl = `https://www.max.com/search?q=${searchQuery}`;
+        break;
+      case 'hulu':
+        searchUrl = `https://www.hulu.com/search?q=${searchQuery}`;
+        break;
     }
-  ];
+    
+    fallbackSources.push({
+      name: icon.name,
+      logo: icon.logo,
+      url: searchUrl,
+      type: 'subscription'
+    });
+  }
+  
+  return fallbackSources;
 }

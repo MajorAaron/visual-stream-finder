@@ -6,6 +6,7 @@ import { ExternalLink, Star, Clock, Calendar, Bookmark, BookmarkCheck } from 'lu
 import { WatchlistService } from '@/utils/watchlistService';
 import { useToast } from '@/hooks/use-toast';
 import { DetectedContent } from '@/utils/aiAnalysis';
+import { StreamingIcon } from '@/components/StreamingIcon';
 
 interface StreamingSource {
   name: string;
@@ -27,32 +28,8 @@ const typeColors = {
   youtube: 'bg-red-500/20 text-red-400'
 };
 
-const sourceTypeColors = {
-  subscription: 'bg-primary/20 text-primary',
-  rent: 'bg-warning/20 text-warning',
-  buy: 'bg-destructive/20 text-destructive',
-  free: 'bg-success/20 text-success'
-};
 
-// Known dark logos that need light backgrounds for visibility
-const darkLogos = [
-  'apple tv',
-  'hbo max', 
-  'hbo',
-  'netflix',
-  'amazon prime video',
-  'disney+',
-  'peacock',
-  'paramount+',
-  'showtime',
-  'starz'
-];
 
-const isDarkLogo = (serviceName: string) => {
-  return darkLogos.some(darkService => 
-    serviceName.toLowerCase().includes(darkService.toLowerCase())
-  );
-};
 
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
@@ -229,7 +206,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                   ) : content.streamingSources && content.streamingSources.length > 0 ? (
                 <>
                   <h4 className="font-semibold">Available on:</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
                     {(() => {
                       // Group streaming sources by service name
                       const groupedSources = content.streamingSources.reduce((acc: any, source: any) => {
@@ -250,43 +227,33 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                         return acc;
                       }, {});
 
-                      return Object.values(groupedSources).map((service: any, idx: number) => (
-                        <Button
-                          key={idx}
-                          variant="outline"
-                          className="flex items-center justify-between p-4 h-auto"
-                          asChild
-                        >
-                          <a href={service.url} target="_blank" rel="noopener noreferrer">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded p-1 flex items-center justify-center ${
-                                isDarkLogo(service.name) ? 'bg-white' : 'bg-transparent'
-                              }`}>
-                                <img
-                                  src={service.logo}
-                                  alt={service.name}
-                                  className="w-full h-full object-contain"
+                      return Object.values(groupedSources).map((service: any, idx: number) => {
+                        console.log(`Streaming service ${service.name}: ${service.url}`);
+                        return (
+                          <Button
+                            key={idx}
+                            variant="outline"
+                            className="flex items-center justify-between p-3 h-auto w-full"
+                            asChild
+                          >
+                            <a href={service.url} target="_blank" rel="noopener noreferrer"
+                               onClick={() => console.log(`Opening streaming link: ${service.url}`)}>
+                              <div className="flex items-center gap-3">
+                                <StreamingIcon 
+                                  serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
+                                  serviceName={service.name}
+                                  fallbackUrl={service.logo}
+                                  className="w-8 h-8 flex-shrink-0"
                                 />
-                              </div>
-                              <div className="text-left">
-                                <div className="font-medium">{service.name}</div>
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  {service.types.map((typeInfo: any, typeIdx: number) => (
-                                    <Badge 
-                                      key={typeIdx}
-                                      className={sourceTypeColors[typeInfo.type]} 
-                                      variant="secondary"
-                                    >
-                                      {typeInfo.type}
-                                    </Badge>
-                                  ))}
+                                                              <div className="text-left flex-1 min-w-0">
+                                  <div className="font-medium truncate">{service.name}</div>
                                 </div>
-                              </div>
                             </div>
-                            <ExternalLink className="h-4 w-4" />
+                            <ExternalLink className="h-4 w-4 flex-shrink-0 ml-2" />
                           </a>
                         </Button>
-                      ));
+                        );
+                      });
                     })()}
                   </div>
                 </>

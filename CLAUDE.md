@@ -84,6 +84,15 @@ The app uses Supabase environment variables. Key services require API keys:
 
 These are configured in the Supabase dashboard, not in local .env files.
 
+## Important Local Development Info
+
+### 📧 Viewing Local Test Emails
+- **Inbucket URL:** http://127.0.0.1:54324
+- This is where ALL local test emails go (signups, password resets, etc.)
+- No real emails are sent in local development
+
+See `/docs/local-development.md` for full local development guide.
+
 ## Deployment
 
 This is a Lovable project that auto-deploys from the main branch. Changes pushed to GitHub are automatically reflected in the Lovable platform.
