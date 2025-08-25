@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { ProfileService, type Profile } from "@/utils/profileService";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Camera, Trash2, Save, User } from "lucide-react";
+import { ArrowLeft, Camera, Trash2, Save, User, Download, Smartphone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Profile() {
@@ -28,6 +28,9 @@ export default function Profile() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isPWAInstalled, setIsPWAInstalled] = useState(false);
+  const [canInstallPWA, setCanInstallPWA] = useState(false);
+  const deferredPromptRef = useRef<any>(null);
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
@@ -57,6 +60,42 @@ export default function Profile() {
       loadProfile();
     }
   }, [user, loadProfile]);
+
+  useEffect(() => {
+    // Check if PWA is installed
+    const checkPWAStatus = () => {
+      // Check if running in standalone mode (installed PWA)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone ||
+        document.referrer.includes('android-app://');
+      
+      setIsPWAInstalled(isStandalone);
+    };
+
+    checkPWAStatus();
+
+    // Listen for the beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      deferredPromptRef.current = e;
+      setCanInstallPWA(true);
+    };
+
+    // Listen for app installed event
+    const handleAppInstalled = () => {
+      setIsPWAInstalled(true);
+      setCanInstallPWA(false);
+      deferredPromptRef.current = null;
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   const handleDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplayName(e.target.value);
@@ -129,6 +168,51 @@ export default function Profile() {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleInstallPWA = async () => {
+    if (!deferredPromptRef.current) {
+      // If no deferred prompt, show instructions
+      toast({
+        title: "Installation Instructions",
+        description: "To install: Chrome menu (⋮) → 'Add to Home screen' or 'Install app'",
+        duration: 5000,
+      });
+      return;
+    }
+
+    try {
+      // Show the install prompt
+      const promptEvent = deferredPromptRef.current;
+      promptEvent.prompt();
+      
+      // Wait for the user to respond to the prompt
+      const { outcome } = await promptEvent.userChoice;
+      
+      if (outcome === 'accepted') {
+        toast({
+          title: "Success",
+          description: "App installed successfully!",
+        });
+        setIsPWAInstalled(true);
+        setCanInstallPWA(false);
+      } else {
+        toast({
+          title: "Installation Cancelled",
+          description: "You can install the app anytime from your browser menu",
+        });
+      }
+      
+      // Clear the deferred prompt
+      deferredPromptRef.current = null;
+    } catch (error) {
+      console.error('Error installing PWA:', error);
+      toast({
+        title: "Installation Error",
+        description: "Failed to install the app. Try from your browser menu instead.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -316,6 +400,45 @@ export default function Profile() {
               <p className="text-xs text-muted-foreground">
                 Email cannot be changed
               </p>
+            </div>
+
+            {/* PWA Installation Section */}
+            <div className="space-y-2 pt-4 border-t">
+              <h3 className="text-sm font-medium">App Installation</h3>
+              <div className="space-y-3">
+                {isPWAInstalled ? (
+                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                    <Smartphone className="h-4 w-4" />
+                    <span>App is installed</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Install the app for a better experience:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• Share images directly from other apps</li>
+                      <li>• Quick access from home screen</li>
+                      <li>• Works offline</li>
+                      <li>• Full screen experience</li>
+                    </ul>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleInstallPWA}
+                      className="w-full sm:w-auto"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Install App
+                    </Button>
+                    {!canInstallPWA && (
+                      <p className="text-xs text-muted-foreground">
+                        To install: Use Chrome menu (⋮) → 'Add to Home screen'
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Account Info */}
