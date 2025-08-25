@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/SearchInput';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
+import { FloatingUploadButton } from '@/components/FloatingUploadButton';
 import { AIAnalysisService } from '@/utils/aiAnalysis';
 import { useAuth } from '@/hooks/useAuth';
+import { useShareHandler } from '@/hooks/useShareHandler';
 import { Card } from '@/components/ui/card';
 import { Sparkles, Tv, Smartphone } from 'lucide-react';
 
@@ -31,17 +33,46 @@ interface DetectedContent {
 const Index = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { sharedContent, clearSharedContent } = useShareHandler();
   const [appState, setAppState] = useState<AppState>('upload');
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('analyzing');
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<DetectedContent[]>([]);
+
+  // Handle shared content when it arrives
+  useEffect(() => {
+    if (sharedContent) {
+      if (sharedContent.type === 'image' && sharedContent.imageBase64) {
+        // Convert base64 to File object for image analysis
+        const byteCharacters = atob(sharedContent.imageBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: sharedContent.mimeType || 'image/jpeg' });
+        const file = new File([blob], 'shared-image.jpg', { type: sharedContent.mimeType || 'image/jpeg' });
+        
+        // Process the shared image
+        handleImageUpload(file);
+        clearSharedContent();
+      } else if (sharedContent.type === 'text' || sharedContent.type === 'url') {
+        // Process shared text/URL
+        const searchQuery = sharedContent.url || sharedContent.text || '';
+        if (searchQuery) {
+          handleTextSearch(searchQuery);
+          clearSharedContent();
+        }
+      }
+    }
+  }, [sharedContent, clearSharedContent, handleImageUpload, handleTextSearch]);
 
   // Auth is now handled by ProtectedRoute wrapper
   if (!user) {
     return null; // This shouldn't happen as ProtectedRoute handles it
   }
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = useCallback(async (file: File) => {
     setAppState('analyzing');
     setProgress(0);
     setAnalysisStage('analyzing');
@@ -75,9 +106,9 @@ const Index = () => {
       console.error('Analysis failed:', error);
       setAppState('upload');
     }
-  };
+  }, []);
 
-  const handleTextSearch = async (query: string) => {
+  const handleTextSearch = useCallback(async (query: string) => {
     setAppState('analyzing');
     setProgress(0);
     setAnalysisStage('searching');
@@ -111,7 +142,7 @@ const Index = () => {
       console.error('Search failed:', error);
       setAppState('upload');
     }
-  };
+  }, []);
 
   const handleNewSearch = () => {
     setAppState('upload');
@@ -215,6 +246,11 @@ const Index = () => {
           <p>Powered by OpenAI Vision API & TMDB</p>
         </footer>
       </div>
+
+      {/* Floating Upload Button - only visible on upload screen */}
+      {appState === 'upload' && (
+        <FloatingUploadButton onImageUpload={handleImageUpload} />
+      )}
     </div>
   );
 };

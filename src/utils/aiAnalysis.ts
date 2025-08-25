@@ -85,14 +85,15 @@ const mockResults: DetectedContent[] = [
 export class AIAnalysisService {
   static async analyzeImage(file: File): Promise<DetectedContent[]> {
     try {
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve, reject) => {
+      // Convert file to base64 and extract MIME type
+      const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = reader.result as string;
-          // Remove data:image/...;base64, prefix
-          const base64String = result.split(',')[1];
-          resolve(base64String);
+          // Extract MIME type and base64 data
+          const [dataPrefix, base64String] = result.split(',');
+          const mimeType = dataPrefix.match(/:(.*?);/)?.[1] || 'image/jpeg';
+          resolve({ base64: base64String, mimeType });
         };
         reader.onerror = reject;
         reader.readAsDataURL(file);
@@ -100,7 +101,7 @@ export class AIAnalysisService {
 
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('analyze-image', {
-        body: { imageBase64: base64 }
+        body: { imageBase64: base64, mimeType }
       });
 
       if (error) {

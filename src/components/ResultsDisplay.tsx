@@ -34,12 +34,24 @@ const typeColors = {
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  
+  // Sort results by confidence, then by number of streaming sources
+  const sortedResults = [...results].sort((a, b) => {
+    // First sort by confidence (higher first)
+    if (a.confidence !== b.confidence) {
+      return b.confidence - a.confidence;
+    }
+    // If confidence is equal, sort by number of streaming sources (more sources first)
+    const aStreamingCount = a.streamingSources?.length || 0;
+    const bStreamingCount = b.streamingSources?.length || 0;
+    return bStreamingCount - aStreamingCount;
+  });
 
   // Check which items are already in watchlist
   useEffect(() => {
     const checkSavedItems = async () => {
       const saved = new Set<string>();
-      for (const item of results) {
+      for (const item of sortedResults) {
         const isInWatchlist = await WatchlistService.isInWatchlist(item.title, item.year);
         if (isInWatchlist) {
           saved.add(`${item.title}-${item.year}`);
@@ -49,7 +61,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
     };
     
     checkSavedItems();
-  }, [results]);
+  }, [sortedResults]);
 
   const handleSaveToWatchlist = async (item: DetectedContent) => {
     const key = `${item.title}-${item.year}`;
@@ -98,12 +110,12 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">Analysis Complete!</h2>
         <p className="text-muted-foreground">
-          Found {results.length} matching {results.length === 1 ? 'title' : 'titles'}
+          Found {sortedResults.length} matching {sortedResults.length === 1 ? 'title' : 'titles'}
         </p>
       </div>
 
       <div className="grid gap-6">
-        {results.map((content, index) => (
+        {sortedResults.map((content, index) => (
           <Card key={index} className="result-card p-6">
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex-shrink-0">
