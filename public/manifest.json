@@ -2,20 +2,20 @@
   "name": "AI Watchlist - Visual Stream Finder",
   "short_name": "AI Watchlist",
   "description": "Identify movies and TV shows from images and find where to stream them",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#1a1f2e",
   "theme_color": "#8b5cf6",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "./icon-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "./icon-512.svg",
       "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
@@ -50,15 +50,15 @@
       "name": "Upload Image",
       "short_name": "Upload",
       "description": "Upload an image to identify content",
-      "url": "/?action=upload",
-      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
+      "url": "./?action=upload",
+      "icons": [{ "src": "./icon-192.svg", "sizes": "192x192" }]
     },
     {
       "name": "My Watchlist",
       "short_name": "Watchlist",
       "description": "View your saved content",
-      "url": "/watchlist",
-      "icons": [{ "src": "/icon-96.png", "sizes": "96x96" }]
+      "url": "./#/watchlist",
+      "icons": [{ "src": "./icon-192.svg", "sizes": "192x192" }]
     }
   ]
 }
