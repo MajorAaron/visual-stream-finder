@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Icon Generator</title>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    // Generate simple icons with gradient background and text
+    function generateIcon(size) {
+      const canvas = document.getElementById('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // Create gradient background
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#8b5cf6');
+      gradient.addColorStop(1, '#6d28d9');
+      
+      // Fill background
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Add rounded corners effect
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.15);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      
+      // Add icon text
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.35}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('AI', size / 2, size / 2 - size * 0.1);
+      
+      // Add subtitle
+      ctx.font = `${size * 0.12}px system-ui`;
+      ctx.fillText('WATCHLIST', size / 2, size / 2 + size * 0.15);
+      
+      // Download the icon
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}.png`;
+        a.click();
+      });
+    }
+    
+    // Generate all sizes
+    setTimeout(() => generateIcon(192), 100);
+    setTimeout(() => generateIcon(512), 500);
+    setTimeout(() => generateIcon(96), 900);
+    
+    document.write('Generating icons... Check your downloads folder');
+  </script>
+</body>
+</html>
