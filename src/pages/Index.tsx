@@ -39,39 +39,6 @@ const Index = () => {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<DetectedContent[]>([]);
 
-  // Handle shared content when it arrives
-  useEffect(() => {
-    if (sharedContent) {
-      if (sharedContent.type === 'image' && sharedContent.imageBase64) {
-        // Convert base64 to File object for image analysis
-        const byteCharacters = atob(sharedContent.imageBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: sharedContent.mimeType || 'image/jpeg' });
-        const file = new File([blob], 'shared-image.jpg', { type: sharedContent.mimeType || 'image/jpeg' });
-        
-        // Process the shared image
-        handleImageUpload(file);
-        clearSharedContent();
-      } else if (sharedContent.type === 'text' || sharedContent.type === 'url') {
-        // Process shared text/URL
-        const searchQuery = sharedContent.url || sharedContent.text || '';
-        if (searchQuery) {
-          handleTextSearch(searchQuery);
-          clearSharedContent();
-        }
-      }
-    }
-  }, [sharedContent, clearSharedContent, handleImageUpload, handleTextSearch]);
-
-  // Auth is now handled by ProtectedRoute wrapper
-  if (!user) {
-    return null; // This shouldn't happen as ProtectedRoute handles it
-  }
-
   const handleImageUpload = useCallback(async (file: File) => {
     setAppState('analyzing');
     setProgress(0);
@@ -149,6 +116,39 @@ const Index = () => {
     setProgress(0);
     setResults([]);
   };
+
+  // Handle shared content when it arrives
+  useEffect(() => {
+    if (sharedContent) {
+      if (sharedContent.type === 'image' && sharedContent.imageBase64) {
+        // Convert base64 to File object for image analysis
+        const byteCharacters = atob(sharedContent.imageBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: sharedContent.mimeType || 'image/jpeg' });
+        const file = new File([blob], 'shared-image.jpg', { type: sharedContent.mimeType || 'image/jpeg' });
+        
+        // Process the shared image
+        handleImageUpload(file);
+        clearSharedContent();
+      } else if (sharedContent.type === 'text' || sharedContent.type === 'url') {
+        // Process shared text/URL
+        const searchQuery = sharedContent.url || sharedContent.text || '';
+        if (searchQuery) {
+          handleTextSearch(searchQuery);
+          clearSharedContent();
+        }
+      }
+    }
+  }, [sharedContent, clearSharedContent, handleImageUpload, handleTextSearch]);
+
+  // Auth is now handled by ProtectedRoute wrapper
+  if (!user) {
+    return null; // This shouldn't happen as ProtectedRoute handles it
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
