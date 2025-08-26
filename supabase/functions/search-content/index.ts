@@ -18,7 +18,7 @@ interface StreamingSource {
 interface ContentResult {
   title: string;
   year: number;
-  type: 'movie' | 'tv' | 'documentary';
+  type: 'movie' | 'tv' | 'documentary' | 'youtube';
   genre: string[];
   rating: number;
   runtime?: string;
@@ -27,22 +27,26 @@ interface ContentResult {
   streamingSources: StreamingSource[];
   confidence: number;
   releaseDate?: string;
+  // YouTube specific fields
+  youtubeUrl?: string;
+  channelName?: string;
 }
 
 // Single unified prompt for OpenAI content identification
-const CONTENT_IDENTIFICATION_PROMPT = `You are a media identification expert. Analyze the provided text input and identify what movie, TV show, or other media content is being referenced.
+const CONTENT_IDENTIFICATION_PROMPT = `You are a media identification expert. Analyze the provided text input and identify what movie, TV show, documentary, or YouTube video is being referenced.
 
 **Your task:**
 - Parse the text for clues like titles, URLs, plot descriptions, character names, or service listings
-- Identify the specific movie, TV show, documentary, or other media content
+- Identify the specific movie, TV show, documentary, or YouTube video
 - Handle partial information, typos, or ambiguous references
 - Provide your best match even with incomplete information
-- Find and provide deep link URLs to the show/movie on streaming platforms
+- For YouTube content, look for channel names, video titles, upload dates, view counts
+- For streaming content, find and provide deep link URLs to the show/movie on streaming platforms
 
 **Response format (JSON only):**
 {
-  "title": "[Movie/Show name]",
-  "type": "[movie/tv/documentary]",
+  "title": "[Movie/Show/Video name]",
+  "type": "[movie/tv/documentary/youtube]",
   "year": "[Release year if known]",
   "confidence": "[high/medium/low]",
   "plot": "[Brief plot summary if available]",
@@ -81,8 +85,8 @@ const CONTENT_IDENTIFICATION_PROMPT = `You are a media identification expert. An
 - Most movies → Netflix, Prime Video, Hulu
 - Recent releases → Prime Video (rent/buy), Apple TV+
 
-**If no movie or TV show can be identified, respond with:**
-{"error": "No movie or TV show found"}`;
+**If no content can be identified, respond with:**
+{"error": "No content found"}`;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -112,6 +116,12 @@ serve(async (req) => {
     if (isUrl) {
       console.log(`[Extract] 🌐 URL detected, fetching content...`);
       contentToAnalyze = await fetchUrlContent(query.trim());
+    }
+    
+    // Check if it's a YouTube URL
+    const isYouTubeUrl = query.trim().match(/youtube\.com|youtu\.be/);
+    if (isYouTubeUrl) {
+      console.log(`[YouTube] 🎥 YouTube URL detected, processing...`);
     }
     
     // Identify content using OpenAI
@@ -359,92 +369,195 @@ async function enrichWithPosters(results: ContentResult[]): Promise<ContentResul
 }
 
 async function enrichWithStreamingData(results: ContentResult[]): Promise<ContentResult[]> {
-  const streamingAvailabilityApiKey = Deno.env.get('STREAMING_AVAILABILITY_API_KEY');
-  
-  if (!streamingAvailabilityApiKey) {
-    console.log('[Streaming Availability] ⚠️ API key not configured, returning without streaming data');
-    return results;
-  }
-
   for (const result of results) {
-    try {
-      const searchType = result.type === 'tv' ? 'series' : 'movie';
-      const searchUrl = `https://streaming-availability.p.rapidapi.com/shows/search/title?title=${encodeURIComponent(result.title)}&country=us&show_type=${searchType}&output_language=en`;
+    if (result.type === 'youtube') {
+      // For YouTube content, fetch real video data using YouTube API
+      console.log(`[YouTube] 🎥 Processing YouTube content: ${result.title}`);
+      const youtubeData = await fetchYouTubeData(result.title);
       
-      console.log(`[Streaming Availability] 🔗 Fetching streaming data for: ${result.title}`);
+      if (youtubeData) {
+        console.log(`[YouTube] ✅ YouTube data retrieved successfully`);
+        result.title = youtubeData.actualTitle; // Use the actual video title from YouTube
+        result.poster = youtubeData.thumbnail;
+        result.streamingSources = [];
+        result.youtubeUrl = youtubeData.url;
+        result.channelName = youtubeData.channelName;
+      } else {
+        console.log(`[YouTube] ⚠️ Using fallback YouTube data`);
+        // Fallback if YouTube API fails
+        result.poster = result.poster || "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=300&h=450&fit=crop";
+        result.streamingSources = [];
+        result.youtubeUrl = `https://youtube.com/results?search_query=${encodeURIComponent(result.title)}`;
+        result.channelName = result.channelName || '';
+      }
+    } else {
+      // For movies/TV/documentaries, fetch streaming data from Streaming Availability API
+      const streamingAvailabilityApiKey = Deno.env.get('STREAMING_AVAILABILITY_API_KEY');
       
-      const headers = {
-        'X-RapidAPI-Key': streamingAvailabilityApiKey,
-        'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
-      };
-      
-      const response = await fetch(searchUrl, {
-        method: 'GET',
-        headers
-      });
-      
-      if (!response.ok) {
-        console.log(`[Streaming Availability] ❌ Failed to fetch streaming data for ${result.title}: ${response.status}`);
+      if (!streamingAvailabilityApiKey) {
+        console.log('[Streaming Availability] ⚠️ API key not configured, returning without streaming data');
         continue;
       }
 
-      const searchData = await response.json();
-      console.log(`📊 Raw streaming results count: ${searchData?.length || 0}`);
-
-      // Find the matching title and year
-      let matchedShow: any = null;
-      if (searchData && searchData.length > 0) {
-        matchedShow = searchData.find((show: any) => {
-          const showYear = show.firstAirYear || show.releaseYear;
-          return Math.abs(showYear - result.year) <= 1; // Allow 1 year difference
-        }) || searchData[0]; // Fallback to first result
+      try {
+        const searchType = result.type === 'tv' ? 'series' : 'movie';
+        const searchUrl = `https://streaming-availability.p.rapidapi.com/shows/search/title?title=${encodeURIComponent(result.title)}&country=us&show_type=${searchType}&output_language=en`;
         
-        console.log(`🎯 Best streaming match: ${matchedShow.title} (${matchedShow.releaseYear || matchedShow.firstAirYear})`);
-      }
-
-      if (!matchedShow) {
-        console.log(`[Streaming Availability] ⚠️ No streaming match found for ${result.title}`);
-        continue;
-      }
-
-      // Extract streaming sources from the matched show
-      const streamingSources: StreamingSource[] = [];
-      
-      if (matchedShow.streamingOptions && matchedShow.streamingOptions.us) {
-        for (const option of matchedShow.streamingOptions.us) {
-          const service = option.service;
-          console.log(`📺 Adding streaming source: ${service.name} (${option.type})`);
-          
-          const streamingSource: StreamingSource = {
-            name: service.name,
-            logo: service.imageSet?.lightThemeImage || `https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop`,
-            url: option.link, // This is the deep link from the API
-            type: option.type === 'subscription' ? 'subscription' : 
-                  option.type === 'rent' ? 'rent' : 
-                  option.type === 'buy' ? 'buy' : 'free',
-            price: option.price ? `$${option.price.amount}` : undefined
-          };
-          streamingSources.push(streamingSource);
+        console.log(`[Streaming Availability] 🔗 Fetching streaming data for: ${result.title}`);
+        
+        const headers = {
+          'X-RapidAPI-Key': streamingAvailabilityApiKey,
+          'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
+        };
+        
+        const response = await fetch(searchUrl, {
+          method: 'GET',
+          headers
+        });
+        
+        if (!response.ok) {
+          console.log(`[Streaming Availability] ❌ Failed to fetch streaming data for ${result.title}: ${response.status}`);
+          continue;
         }
+
+        const searchData = await response.json();
+        console.log(`📊 Raw streaming results count: ${searchData?.length || 0}`);
+
+        // Find the matching title and year
+        let matchedShow: any = null;
+        if (searchData && searchData.length > 0) {
+          matchedShow = searchData.find((show: any) => {
+            const showYear = show.firstAirYear || show.releaseYear;
+            return Math.abs(showYear - result.year) <= 1; // Allow 1 year difference
+          }) || searchData[0]; // Fallback to first result
+          
+          console.log(`🎯 Best streaming match: ${matchedShow.title} (${matchedShow.releaseYear || matchedShow.firstAirYear})`);
+        }
+
+        if (!matchedShow) {
+          console.log(`[Streaming Availability] ⚠️ No streaming match found for ${result.title}`);
+          continue;
+        }
+
+        // Extract streaming sources from the matched show
+        const streamingSources: StreamingSource[] = [];
+        
+        if (matchedShow.streamingOptions && matchedShow.streamingOptions.us) {
+          for (const option of matchedShow.streamingOptions.us) {
+            const service = option.service;
+            console.log(`📺 Adding streaming source: ${service.name} (${option.type})`);
+            
+            const streamingSource: StreamingSource = {
+              name: service.name,
+              logo: service.imageSet?.lightThemeImage || `https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop`,
+              url: option.link, // This is the deep link from the API
+              type: option.type === 'subscription' ? 'subscription' : 
+                    option.type === 'rent' ? 'rent' : 
+                    option.type === 'buy' ? 'buy' : 'free',
+              price: option.price ? `$${option.price.amount}` : undefined
+            };
+            streamingSources.push(streamingSource);
+          }
+        }
+
+        // If no streaming sources found, generate fallback sources
+        if (streamingSources.length === 0) {
+          console.log(`[Streaming Availability] 🔄 No sources found, generating fallback sources for ${result.title}`);
+          streamingSources.push(...generateFallbackSources(result.title));
+        }
+
+        result.streamingSources = streamingSources;
+        console.log(`[Streaming Availability] ✅ Found ${streamingSources.length} streaming sources for ${result.title}`);
+
+      } catch (error) {
+        console.log(`[Streaming Availability] ⚠️ Error fetching streaming data for ${result.title}: ${error.message}`);
+        // Generate fallback sources on error
+        result.streamingSources = generateFallbackSources(result.title);
       }
-
-      // If no streaming sources found, generate fallback sources
-      if (streamingSources.length === 0) {
-        console.log(`[Streaming Availability] 🔄 No sources found, generating fallback sources for ${result.title}`);
-        streamingSources.push(...generateFallbackSources(result.title));
-      }
-
-      result.streamingSources = streamingSources;
-      console.log(`[Streaming Availability] ✅ Found ${streamingSources.length} streaming sources for ${result.title}`);
-
-    } catch (error) {
-      console.log(`[Streaming Availability] ⚠️ Error fetching streaming data for ${result.title}: ${error.message}`);
-      // Generate fallback sources on error
-      result.streamingSources = generateFallbackSources(result.title);
     }
   }
 
   return results;
+}
+
+// Fetch real YouTube video data using YouTube Data API
+async function fetchYouTubeData(videoTitle: string): Promise<{ thumbnail: string; url: string; channelName: string; actualTitle: string } | null> {
+  const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
+  
+  if (!youtubeApiKey) {
+    console.log('[YouTube] ⚠️ API key not configured');
+    return null;
+  }
+
+  try {
+    console.log(`[YouTube] 🎥 Fetching data for: ${videoTitle}`);
+    
+    // Search for videos using YouTube Data API v3
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(videoTitle)}&type=video&maxResults=5&key=${youtubeApiKey}`;
+    
+    const searchResponse = await fetch(searchUrl);
+    
+    if (!searchResponse.ok) {
+      console.log(`[YouTube] ❌ Search failed: ${searchResponse.status}`);
+      return null;
+    }
+
+    const searchData = await searchResponse.json();
+    console.log(`📊 YouTube search results: ${searchData.items?.length || 0} videos found`);
+    
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log('[YouTube] ⚠️ No videos found for query');
+      return null;
+    }
+
+    // Get the first result (most relevant)
+    const video = searchData.items[0];
+    const videoId = video.id.videoId;
+    console.log(`🎯 Selected video ID: ${videoId}`);
+    
+    // Get video details including higher quality thumbnail
+    const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${youtubeApiKey}`;
+    
+    const detailsResponse = await fetch(videoDetailsUrl);
+    
+    if (!detailsResponse.ok) {
+      console.log(`⚠️ Video details failed (${detailsResponse.status}), using search result data`);
+      // Fallback to search result data
+      const fallbackData = {
+        thumbnail: video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        channelName: video.snippet.channelTitle,
+        actualTitle: video.snippet.title
+      };
+      console.log(`[YouTube] ✅ Using fallback data for ${fallbackData.actualTitle}`);
+      return fallbackData;
+    }
+
+    const detailsData = await detailsResponse.json();
+    const videoDetails = detailsData.items[0];
+    
+    if (!videoDetails) {
+      console.log(`[YouTube] ❌ No details found for video ID: ${videoId}`);
+      return null;
+    }
+
+    const result = {
+      thumbnail: videoDetails.snippet.thumbnails.maxres?.url || 
+                videoDetails.snippet.thumbnails.high?.url || 
+                videoDetails.snippet.thumbnails.medium?.url || 
+                videoDetails.snippet.thumbnails.default?.url,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      channelName: videoDetails.snippet.channelTitle,
+      actualTitle: videoDetails.snippet.title
+    };
+
+    console.log(`[YouTube] ✅ Successfully fetched data for ${result.actualTitle}`);
+    return result;
+
+  } catch (error) {
+    console.log(`[YouTube] ❌ Error: ${error.message}`);
+    return null;
+  }
 }
 
 function detectStreamingService(url: string): StreamingSource | null {
