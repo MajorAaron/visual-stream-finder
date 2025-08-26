@@ -162,7 +162,17 @@ For detailed documentation on edge functions, see:
 
 ## Deployment
 
-GitHub Pages deployment via GitHub Actions. The main branch auto-deploys using the gh-pages package. HashRouter is used for client-side routing compatibility.
+GitHub Pages deployment via GitHub Actions. When you push to the main branch, the workflow automatically:
+1. Builds the project
+2. Deploys directly to GitHub Pages (no separate gh-pages branch needed)
+3. Site updates are live within 2-5 minutes after merge
+
+**Important**: You need to configure GitHub Pages in repository settings:
+- Go to Settings → Pages
+- Source: GitHub Actions (not Deploy from a branch)
+- The workflow handles everything else automatically
+
+HashRouter is used for client-side routing compatibility with GitHub Pages.
 
 ## Important Notes
 
