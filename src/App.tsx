@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DevIndicator } from "@/components/DevIndicator";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import { FloatingAddButton } from "@/components/FloatingAddButton";
 import { registerServiceWorker } from "@/utils/serviceWorkerRegistration";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -39,9 +39,9 @@ function App() {
           
           <Route path="*" element={<NotFound />} />
         </Routes>
-        <Toaster />
         <DevIndicator />
         <PWAInstallPrompt />
+        <FloatingAddButton />
       </Router>
     </QueryClientProvider>
   );

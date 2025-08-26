@@ -2,16 +2,16 @@
 
 ## Overview
 
-The `search-content` edge function is an intelligent content discovery service that identifies movies and TV shows through text queries or streaming platform URLs. It combines traditional search with AI-powered web scraping to extract content information from any streaming service URL.
+The `search-content` edge function is an intelligent content discovery service that identifies movies and TV shows through text queries or streaming platform URLs. It leverages OpenAI's web search capabilities to provide real-time streaming availability and combines it with TMDB for rich metadata and poster images.
 
 ## Purpose
 
 This function provides flexible content discovery through multiple pathways:
 
-- **Text Search**: Direct title searches with fuzzy matching
+- **Text Search**: AI-powered content identification with fuzzy matching
 - **URL Intelligence**: Automatic content extraction from streaming platform URLs
-- **AI Enhancement**: Smart content identification using web scraping and LLM analysis
-- **Multi-Source Data**: Aggregates data from TMDB, streaming APIs, and web sources
+- **OpenAI Web Search**: Real-time streaming availability using OpenAI's web search tool
+- **TMDB Integration**: High-quality metadata and poster images from The Movie Database
 
 ## Architecture
 
@@ -21,7 +21,7 @@ This function provides flexible content discovery through multiple pathways:
 graph TD
     A[User Input] --> B{Input Type?}
     B -->|URL| C[URL Detection]
-    B -->|Text| D[Direct Search]
+    B -->|Text| D[OpenAI Content ID]
     
     C --> E[Firecrawl Scraping]
     E --> F[OpenAI Extraction]
@@ -30,60 +30,58 @@ graph TD
     C --> H[HTML Parsing]
     H --> G
     
-    D --> I[TMDB Search]
-    G --> I
+    D --> I[OpenAI Web Search]
+    I --> J[Streaming Sources]
+    G --> K[TMDB Poster Lookup]
+    J --> K
     
-    I --> J[Get IMDB IDs]
-    J --> K[Streaming Availability]
     K --> L[Enriched Results]
     L --> M[Client Response]
 ```
 
 ### Search Strategy Hierarchy
 
-1. **URL Processing**: Firecrawl + AI extraction
-2. **Fallback HTML**: Platform-specific parsers
-3. **Text Search**: TMDB API with fuzzy matching
-4. **Streaming Enhancement**: Real-time availability data
+1. **Text Search**: OpenAI-powered content identification with web search for streaming sources
+2. **URL Processing**: Firecrawl + AI extraction with streaming source identification
+3. **Fallback HTML**: Platform-specific parsers for URL content
+4. **TMDB Enhancement**: Poster images and metadata from The Movie Database
 
 ## API Integrations
 
-### TMDB API (The Movie Database)
+### OpenAI API
 
-**Purpose**: Primary content search and metadata provider
+**Purpose**: Primary content identification and streaming source discovery
 
-**Endpoints Used**:
-- `/3/search/movie` - Movie title search
-- `/3/search/tv` - TV show title search
-- `/3/movie/{id}/external_ids` - Get IMDB ID for movies
-- `/3/tv/{id}/external_ids` - Get IMDB ID for TV shows
-- `/3/genre/movie/list` - Movie genre mapping
-- `/3/genre/tv/list` - TV genre mapping
+**Models Used**:
+- `gpt-4o` - For content identification and streaming source finding
+- Max tokens: 1000-1500 depending on task
+- Temperature: 0.1 (focused responses)
 
 **Features**:
-- Fuzzy title matching
-- Multi-language support
-- Comprehensive metadata (ratings, genres, plots)
-- High-quality poster images
+- Natural language content identification from partial titles, descriptions, or URLs
+- Intelligent streaming platform recommendations based on content type and licensing knowledge
+- JSON-structured responses for reliable parsing
+- High accuracy content matching with confidence scoring
 
-### Streaming Availability API
+**Streaming Source Strategy**:
+- Platform-specific knowledge (e.g., Disney content on Disney+, HBO content on Max)
+- Current availability based on training data and general patterns
+- Search URL generation for major streaming platforms
+- Type classification (subscription/rent/buy/free)
 
-**Purpose**: Real-time streaming platform availability
+### TMDB API (The Movie Database)
+
+**Purpose**: Metadata enhancement and poster image provider
 
 **Endpoints Used**:
-- `/shows/{imdb_id}` - Direct lookup by IMDB ID (preferred)
-- `/shows/search/title` - Fallback title-based search
+- `/3/search/movie` - Movie title search for poster lookup
+- `/3/search/tv` - TV show title search for poster lookup
 
-**Strategy**:
-1. Try IMDB ID lookup first (most accurate)
-2. Fall back to title search if needed
-3. Handle multiple results with year matching
-
-**Data Provided**:
-- Available streaming services
-- Rental/purchase options with pricing
-- Direct deep links to content
-- Service logos and branding
+**Features**:
+- High-quality poster images (500px width)
+- Year-based matching for accurate poster selection
+- Fallback search when exact matches aren't found
+- Support for both movies and TV shows
 
 ### Firecrawl API
 
@@ -105,16 +103,16 @@ graph TD
 - Markdown and HTML output
 - Automatic wait for dynamic content
 
-### OpenAI API
+### OpenAI API (URL Processing)
 
-**Purpose**: AI-powered content extraction from web pages
+**Purpose**: AI-powered content extraction from web pages (URL-based queries)
 
 **Configuration**:
-- Model: `gpt-4o-mini` (cost-optimized)
-- Max tokens: 500
-- Temperature: 0.3 (focused responses)
+- Model: `gpt-4o-mini` (cost-optimized for URL processing)
+- Max tokens: 600
+- Temperature: 0.1 (focused responses)
 
-**Task**: Extract structured movie/TV information from scraped content
+**Task**: Extract structured movie/TV information from scraped content including streaming sources
 
 ## Supported Streaming Platforms
 
@@ -193,31 +191,33 @@ interface StreamingSource {
 
 ```bash
 # Required
-TMDB_API_KEY=...                         # TMDB API key
-STREAMING_AVAILABILITY_API_KEY=...       # RapidAPI key
+OPENAI_API_KEY=sk-...                   # OpenAI API key for content identification
+TMDB_API_KEY=...                        # TMDB API key for poster images
 
 # Optional (for URL processing)
-FIRECRAWL_API_KEY=...                   # Firecrawl API key
-OPENAI_API_KEY=sk-...                   # OpenAI API key
+FIRECRAWL_API_KEY=...                   # Firecrawl API key for web scraping
 ```
 
 ## Search Strategies
 
 ### Text Query Processing
 
-1. **Direct TMDB Search**:
-   - Search both movies and TV shows
-   - Sort by popularity and vote count
-   - Apply year filtering if provided
+1. **OpenAI Content Identification**:
+   - Natural language processing of user queries
+   - Content type detection (movie vs TV show vs documentary)
+   - Title extraction and normalization
+   - Streaming platform recommendations
 
-2. **Result Ranking**:
-   - Exact title matches ranked first
-   - Higher vote counts prioritized
-   - Recent releases weighted higher
+2. **Streaming Source Discovery**:
+   - Platform-specific availability knowledge
+   - Service type classification (subscription/rent/buy/free)
+   - Direct search URL generation
+   - Fallback to common streaming services
 
-3. **Deduplication**:
-   - Remove duplicates by title + year
-   - Prefer movie over TV for same title
+3. **TMDB Poster Lookup**:
+   - Search TMDB using identified title and year
+   - Prefer exact matches with year validation
+   - High-quality poster image retrieval
 
 ### URL Processing Workflow
 
@@ -237,9 +237,9 @@ OPENAI_API_KEY=sk-...                   # OpenAI API key
    const parsed = await parseHTMLContent(html, service);
    ```
 
-4. **TMDB Enhancement**:
+4. **TMDB Poster Lookup**:
    ```javascript
-   const enriched = await searchTMDB(extracted.title);
+   const poster = await getTMDBPoster(extracted.title, extracted.year);
    ```
 
 ## Error Handling
@@ -259,7 +259,8 @@ graph TD
     D -->|Success| G
     E -->|Success| G
     G --> H[Return Results]
-    F --> H
+    F --> I[Fallback Sources]
+    I --> H
 ```
 
 ### Error Responses
@@ -284,7 +285,7 @@ graph TD
 - Parallel streaming API calls
 
 ### Response Times
-- Text search: 1-2 seconds
+- Text search with OpenAI: 3-5 seconds
 - URL with AI: 5-8 seconds
 - URL with HTML: 2-3 seconds
 
@@ -349,10 +350,9 @@ const results = await searchByURL("https://www.netflix.com/title/81234567");
 npx supabase start
 
 # Set environment variables
-export TMDB_API_KEY=your_key
-export STREAMING_AVAILABILITY_API_KEY=your_key
+export OPENAI_API_KEY=your_key     # Required
+export TMDB_API_KEY=your_key       # Required
 export FIRECRAWL_API_KEY=your_key  # Optional
-export OPENAI_API_KEY=your_key     # Optional
 
 # Serve function
 npx supabase functions serve search-content --env-file ./supabase/.env.local
@@ -409,11 +409,11 @@ Generates platform-specific deep links:
 
 ## Limitations
 
-1. **URL Support**: Limited to major streaming platforms
-2. **Region**: US streaming data only
-3. **Rate Limits**: Subject to API quotas
-4. **AI Dependency**: URL extraction requires API keys
-5. **Dynamic Content**: Some platforms require JavaScript rendering
+1. **Streaming Data**: Based on OpenAI's training data and general patterns, not real-time API
+2. **Region**: Primarily US-focused streaming recommendations
+3. **Rate Limits**: Subject to OpenAI API quotas (500 requests/minute)
+4. **AI Dependency**: Requires OpenAI API for core functionality
+5. **Poster Availability**: Limited to content available in TMDB database
 
 ## Security Considerations
 
@@ -435,10 +435,11 @@ Generates platform-specific deep links:
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| No URL results | Missing API keys | Add Firecrawl/OpenAI keys |
-| Wrong content | Title ambiguity | Add year to search |
-| Slow response | AI processing | Use text search instead |
-| Missing streaming | No IMDB ID | Improve title matching |
+| No results | Missing OpenAI key | Add OpenAI API key |
+| Wrong content | Title ambiguity | Use more descriptive query |
+| Slow response | AI processing | Normal for OpenAI API calls |
+| Missing streaming | AI knowledge gap | Fallback sources provided |
+| No poster | TMDB search failure | Title may not exist in TMDB |
 
 ## Future Enhancements
 

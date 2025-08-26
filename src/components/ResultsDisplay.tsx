@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Star, Clock, Calendar, Bookmark, BookmarkCheck } from 'lucide-react';
 import { WatchlistService } from '@/utils/watchlistService';
-import { useToast } from '@/hooks/use-toast';
 import { DetectedContent } from '@/utils/aiAnalysis';
 import { StreamingIcon } from '@/components/StreamingIcon';
 
@@ -33,22 +32,28 @@ const typeColors = {
 
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
-  const { toast } = useToast();
   
-  // Sort results by confidence, then by number of streaming sources
-  const sortedResults = [...results].sort((a, b) => {
-    // First sort by confidence (higher first)
-    if (a.confidence !== b.confidence) {
-      return b.confidence - a.confidence;
-    }
-    // If confidence is equal, sort by number of streaming sources (more sources first)
-    const aStreamingCount = a.streamingSources?.length || 0;
-    const bStreamingCount = b.streamingSources?.length || 0;
-    return bStreamingCount - aStreamingCount;
-  });
+  // Memoize sorted results to prevent unnecessary re-renders
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => {
+      // First sort by confidence (higher first)
+      if (a.confidence !== b.confidence) {
+        return b.confidence - a.confidence;
+      }
+      // If confidence is equal, sort by number of streaming sources (more sources first)
+      const aStreamingCount = a.streamingSources?.length || 0;
+      const bStreamingCount = b.streamingSources?.length || 0;
+      return bStreamingCount - aStreamingCount;
+    });
+  }, [results]);
 
   // Check which items are already in watchlist
   useEffect(() => {
+    // Only check if we have results and they haven't been checked yet
+    if (sortedResults.length === 0 || savedItems.size > 0) {
+      return;
+    }
+    
     const checkSavedItems = async () => {
       const saved = new Set<string>();
       for (const item of sortedResults) {
@@ -61,7 +66,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
     };
     
     checkSavedItems();
-  }, [sortedResults]);
+  }, [sortedResults, savedItems.size]); // Only depend on results and whether we've already checked
 
   const handleSaveToWatchlist = async (item: DetectedContent) => {
     const key = `${item.title}-${item.year}`;
@@ -76,32 +81,18 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
           newSet.delete(key);
           return newSet;
         });
-        toast({
-          title: "Removed from Watchlist",
-          description: `${item.title} has been removed from your watchlist.`,
-        });
+        console.log(`${item.title} has been removed from your watchlist.`);
       } else {
-        toast({
-          title: "Error",
-          description: error || "Failed to remove from watchlist",
-          variant: "destructive",
-        });
+        console.error('Failed to remove from watchlist:', error);
       }
     } else {
       // Add to watchlist
       const { success, error } = await WatchlistService.addToWatchlist(item);
       if (success) {
         setSavedItems(prev => new Set(prev).add(key));
-        toast({
-          title: "Added to Watchlist",
-          description: `${item.title} has been saved to your watchlist.`,
-        });
+        console.log(`${item.title} has been saved to your watchlist.`);
       } else {
-        toast({
-          title: "Error",
-          description: error || "Failed to add to watchlist",
-          variant: "destructive",
-        });
+        console.error('Failed to add to watchlist:', error);
       }
     }
   };

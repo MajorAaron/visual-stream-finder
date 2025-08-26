@@ -1,86 +1,72 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { WatchlistService, WatchlistItem } from '@/utils/watchlistService';
 import { DetectedContent } from '@/utils/aiAnalysis';
-import { useToast } from '@/hooks/use-toast';
 
 export const useWatchlist = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const hasFetchedRef = useRef(false);
 
-  const fetchWatchlist = async () => {
-    setLoading(true);
-    const { data, error } = await WatchlistService.getWatchlist();
-    if (error) {
-      toast({
-        title: "Error",
-        description: error,
-        variant: "destructive",
-      });
-    } else {
-      setWatchlist(data);
-    }
-    setLoading(false);
-  };
+  // Only fetch once on mount
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    
+    const fetchData = async () => {
+      try {
+        const { data, error } = await WatchlistService.getWatchlist();
+        if (!error && data) {
+          setWatchlist(data);
+        }
+      } catch (err) {
+        console.error('Error fetching watchlist:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []); // Empty dependency array - only run once
 
   const addToWatchlist = async (content: DetectedContent) => {
     const { success, error } = await WatchlistService.addToWatchlist(content);
     if (success) {
-      toast({
-        title: "Added to Watchlist",
-        description: `${content.title} has been saved to your watchlist.`,
-      });
-      await fetchWatchlist(); // Refresh the watchlist
+      console.log(`${content.title} has been saved to your watchlist.`);
+      // Manually refresh
+      const { data } = await WatchlistService.getWatchlist();
+      if (data) setWatchlist(data);
     } else {
-      toast({
-        title: "Error",
-        description: error || "Failed to add to watchlist",
-        variant: "destructive",
-      });
+      console.error('Failed to add to watchlist:', error);
     }
   };
 
   const removeFromWatchlist = async (title: string, year: number) => {
     const { success, error } = await WatchlistService.removeFromWatchlist(title, year);
     if (success) {
-      toast({
-        title: "Removed from Watchlist",
-        description: `${title} has been removed from your watchlist.`,
-      });
-      await fetchWatchlist(); // Refresh the watchlist
+      console.log(`${title} has been removed from your watchlist.`);
+      // Manually refresh
+      const { data } = await WatchlistService.getWatchlist();
+      if (data) setWatchlist(data);
     } else {
-      toast({
-        title: "Error",
-        description: error || "Failed to remove from watchlist",
-        variant: "destructive",
-      });
+      console.error('Failed to remove from watchlist:', error);
     }
   };
 
   const markAsWatched = async (title: string, year: number) => {
     const { success, error } = await WatchlistService.markAsWatched(title, year);
     if (success) {
-      toast({
-        title: "Marked as Watched",
-        description: `${title} has been marked as watched.`,
-      });
-      await fetchWatchlist(); // Refresh the watchlist
+      console.log(`${title} has been marked as watched.`);
+      // Manually refresh
+      const { data } = await WatchlistService.getWatchlist();
+      if (data) setWatchlist(data);
     } else {
-      toast({
-        title: "Error",
-        description: error || "Failed to mark as watched",
-        variant: "destructive",
-      });
+      console.error('Failed to mark as watched:', error);
     }
   };
 
   const isInWatchlist = async (title: string, year: number): Promise<boolean> => {
     return await WatchlistService.isInWatchlist(title, year);
   };
-
-  useEffect(() => {
-    fetchWatchlist();
-  }, []);
 
   return {
     watchlist,
@@ -89,73 +75,71 @@ export const useWatchlist = () => {
     removeFromWatchlist,
     markAsWatched,
     isInWatchlist,
-    refreshWatchlist: fetchWatchlist,
+    refreshWatchlist: async () => {
+      const { data } = await WatchlistService.getWatchlist();
+      if (data) setWatchlist(data);
+    },
   };
 };
 
 export const useWatchedItems = () => {
   const [watchedItems, setWatchedItems] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const hasFetchedRef = useRef(false);
 
-  const fetchWatchedItems = async () => {
-    setLoading(true);
-    const { data, error } = await WatchlistService.getWatchedItems();
-    if (error) {
-      toast({
-        title: "Error",
-        description: error,
-        variant: "destructive",
-      });
-    } else {
-      setWatchedItems(data);
-    }
-    setLoading(false);
-  };
+  // Only fetch once on mount
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    
+    const fetchData = async () => {
+      try {
+        const { data, error } = await WatchlistService.getWatchedItems();
+        if (!error && data) {
+          setWatchedItems(data);
+        }
+      } catch (err) {
+        console.error('Error fetching watched items:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, []); // Empty dependency array - only run once
 
   const markAsUnwatched = async (title: string, year: number) => {
     const { success, error } = await WatchlistService.markAsUnwatched(title, year);
     if (success) {
-      toast({
-        title: "Marked as Unwatched",
-        description: `${title} has been moved back to your watchlist.`,
-      });
-      await fetchWatchedItems(); // Refresh the watched items list
+      console.log(`${title} has been moved back to your watchlist.`);
+      // Manually refresh
+      const { data } = await WatchlistService.getWatchedItems();
+      if (data) setWatchedItems(data);
     } else {
-      toast({
-        title: "Error",
-        description: error || "Failed to mark as unwatched",
-        variant: "destructive",
-      });
+      console.error('Failed to mark as unwatched:', error);
     }
   };
 
   const removeFromWatchlist = async (title: string, year: number) => {
     const { success, error } = await WatchlistService.removeFromWatchlist(title, year);
     if (success) {
-      toast({
-        title: "Removed Permanently",
-        description: `${title} has been permanently removed.`,
-      });
-      await fetchWatchedItems(); // Refresh the watched items list
+      console.log(`${title} has been permanently removed.`);
+      // Manually refresh
+      const { data } = await WatchlistService.getWatchedItems();
+      if (data) setWatchedItems(data);
     } else {
-      toast({
-        title: "Error",
-        description: error || "Failed to remove from watchlist",
-        variant: "destructive",
-      });
+      console.error('Failed to remove from watchlist:', error);
     }
   };
-
-  useEffect(() => {
-    fetchWatchedItems();
-  }, []);
 
   return {
     watchedItems,
     loading,
     markAsUnwatched,
     removeFromWatchlist,
-    refreshWatchedItems: fetchWatchedItems,
+    refreshWatchedItems: async () => {
+      const { data } = await WatchlistService.getWatchedItems();
+      if (data) setWatchedItems(data);
+    },
   };
 };

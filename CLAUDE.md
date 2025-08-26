@@ -60,10 +60,10 @@ npx supabase stop
 
 ### Backend Services
 - **Supabase** (BaaS) - Authentication, database, and edge functions
-- **OpenAI Vision API** - Image content identification
-- **TMDB API** - Movie/TV metadata
+- **OpenAI API** - Image content identification and streaming source detection
+- **TMDB API** - Movie/TV metadata and poster images
 - **YouTube Data API** - Video identification
-- **Streaming Availability API** - Platform availability
+- **Firecrawl API** - Enhanced web content extraction
 
 ### Key Directories
 - `src/pages/` - Main application pages (Index, Auth, Profile, Watchlist, Watched)
@@ -80,9 +80,17 @@ npx supabase stop
 2. **Edge Function**: analyze-image processes through:
    - OpenAI Vision API for content identification
    - TMDB API for metadata and posters
-   - Streaming Availability API for platform data
+   - OpenAI API for streaming platform detection
    - YouTube Data API for video content
 3. **Display**: ResultsDisplay.tsx shows streaming options
+
+### Text/URL Search Pipeline
+1. **Frontend**: SearchInput.tsx handles text queries and URLs
+2. **Edge Function**: search-content processes through:
+   - URL extraction via Firecrawl API (if URL provided)
+   - OpenAI API for content identification and streaming sources
+   - TMDB API for metadata and poster images
+3. **Display**: ResultsDisplay.tsx shows streaming options with direct links
 
 ### Authentication Flow
 - Multi-provider support (Email, Google, GitHub, Discord)
@@ -134,22 +142,23 @@ No test framework is currently configured. To verify changes:
 ## Environment Variables
 
 The app uses Supabase environment variables. Key services require API keys:
-- OpenAI API (for vision analysis)
-- TMDB API (for movie/TV data)
+- OpenAI API (for vision analysis and streaming source detection)
+- TMDB API (for movie/TV data and poster images)
 - YouTube Data API (for video identification)
-- Streaming Availability API (for platform data)
-- Firecrawl API (for web scraping)
+- Firecrawl API (for enhanced web content extraction)
 
 These are configured in the Supabase dashboard, not in local .env files.
 
 ## Edge Functions
 
 - `analyze-image` - Processes uploaded images with OpenAI Vision
-- `search-content` - Handles text-based content search
+- `search-content` - Handles text-based content search and URL extraction
 
 For detailed documentation on edge functions, see:
 - [Analyze Image Function Documentation](/docs/edge-functions/analyze-image.md)
 - [Search Content Function Documentation](/docs/edge-functions/search-content.md)
+- [Search Content Update Documentation](/docs/edge-functions/search-content-update.md) - OpenAI integration changes
+- [Search Content Logging Improvement](/docs/edge-functions/search-content-logging-improvement.md) - Enhanced logging with step prefixes
 
 ## Deployment
 

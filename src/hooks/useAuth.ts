@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -16,13 +14,6 @@ export const useAuth = () => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
-        if (event === 'SIGNED_OUT') {
-          toast({
-            title: "Signed out",
-            description: "You have been signed out successfully.",
-          });
-        }
       }
     );
 
@@ -34,16 +25,12 @@ export const useAuth = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, [toast]);
+  }, []); // No dependencies - only run once
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Sign out error:', error.message);
     }
   };
 
@@ -58,11 +45,7 @@ export const useAuth = () => {
     });
     
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('OAuth sign in error:', error.message);
     }
   };
 
@@ -78,26 +61,16 @@ export const useAuth = () => {
     });
     
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Sign up error:', error.message);
       return { error };
     }
     
     // If user is immediately confirmed (email verification disabled)
     if (data?.user && data?.session) {
-      toast({
-        title: "Welcome!",
-        description: "Your account has been created successfully.",
-      });
+      console.log('Account created successfully');
     } else {
       // Fallback for when email verification is enabled
-      toast({
-        title: "Check your email",
-        description: "We've sent you a confirmation link to complete your registration.",
-      });
+      console.log('Check your email for confirmation link');
     }
     
     return { error: null };
@@ -110,11 +83,7 @@ export const useAuth = () => {
     });
     
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error('Sign in error:', error.message);
       return { error };
     }
     

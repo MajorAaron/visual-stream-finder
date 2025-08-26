@@ -4,12 +4,11 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/SearchInput';
 import { LoadingScreen } from '@/components/LoadingScreen';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
-import { FloatingUploadButton } from '@/components/FloatingUploadButton';
 import { AIAnalysisService } from '@/utils/aiAnalysis';
 import { useAuth } from '@/hooks/useAuth';
 import { useShareHandler } from '@/hooks/useShareHandler';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Tv, Smartphone } from 'lucide-react';
+import { Sparkles, Tv, Smartphone, Menu, X } from 'lucide-react';
 
 type AppState = 'upload' | 'analyzing' | 'results';
 type AnalysisStage = 'analyzing' | 'identifying' | 'searching' | 'complete';
@@ -38,6 +37,7 @@ const Index = () => {
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>('analyzing');
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<DetectedContent[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleImageUpload = useCallback(async (file: File) => {
     setAppState('analyzing');
@@ -153,16 +153,18 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       {/* Header with user info and sign out */}
-      <header className="border-b bg-background/80 backdrop-blur-sm">
+      <header className="border-b bg-background/80 backdrop-blur-sm relative">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
+          <div className="flex justify-between items-center">
+            <div className="flex-1">
               <h1 className="text-xl sm:text-2xl font-bold text-primary">AI Watchlist</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground hidden sm:block">
                 Welcome back, {user.user_metadata?.full_name || user.email}!
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+            
+            {/* Desktop Navigation */}
+            <div className="hidden sm:flex items-center gap-2 sm:gap-4">
               <Button onClick={() => navigate('/profile')} variant="outline" size="sm">
                 Profile
               </Button>
@@ -176,61 +178,96 @@ const Index = () => {
                 Sign Out
               </Button>
             </div>
+            
+            {/* Mobile Hamburger Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </div>
+          
+          {/* Mobile Menu Dropdown */}
+          {isMobileMenuOpen && (
+            <div className="sm:hidden absolute top-full left-0 right-0 bg-background border-b shadow-lg z-50">
+              <div className="px-4 py-2 border-b">
+                <p className="text-sm text-muted-foreground">
+                  {user.user_metadata?.full_name || user.email}
+                </p>
+              </div>
+              <div className="flex flex-col p-2">
+                <Button 
+                  onClick={() => {
+                    navigate('/profile');
+                    setIsMobileMenuOpen(false);
+                  }} 
+                  variant="ghost" 
+                  className="justify-start"
+                >
+                  Profile
+                </Button>
+                <Button 
+                  onClick={() => {
+                    navigate('/watchlist');
+                    setIsMobileMenuOpen(false);
+                  }} 
+                  variant="ghost" 
+                  className="justify-start"
+                >
+                  My Watchlist
+                </Button>
+                <Button 
+                  onClick={() => {
+                    navigate('/watched');
+                    setIsMobileMenuOpen(false);
+                  }} 
+                  variant="ghost" 
+                  className="justify-start"
+                >
+                  Watched
+                </Button>
+                <Button 
+                  onClick={() => {
+                    signOut();
+                    setIsMobileMenuOpen(false);
+                  }} 
+                  variant="ghost" 
+                  className="justify-start text-destructive"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-4 py-8">
-        {appState === 'upload' && (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-primary mb-4">
-                Discover What to Watch
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Upload any image, paste a title, or share text from your phone to find movies and TV shows 
-                and discover where to watch them instantly.
-              </p>
-            </div>
-
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
-              <div className="text-center p-6 bg-card rounded-lg">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-primary font-bold">1</span>
-                </div>
-                <h3 className="font-semibold mb-2">Upload or Search</h3>
-                <p className="text-sm text-muted-foreground">
-                  Drop an image or enter a movie/TV show title
-                </p>
-              </div>
-              <div className="text-center p-6 bg-card rounded-lg">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-primary font-bold">2</span>
-                </div>
-                <h3 className="font-semibold mb-2">AI Analysis</h3>
-                <p className="text-sm text-muted-foreground">
-                  AI identifies content or searches databases
-                </p>
-              </div>
-              <div className="text-center p-6 bg-card rounded-lg">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-primary font-bold">3</span>
-                </div>
-                <h3 className="font-semibold mb-2">Find Streams</h3>
-                <p className="text-sm text-muted-foreground">
-                  Get direct links to streaming platforms
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
+      <div className="container mx-auto px-4 py-6">
         {/* Main Content */}
         <div className="space-y-6">
           {appState === 'upload' && (
-            <SearchInput onImageUpload={handleImageUpload} onTextSearch={handleTextSearch} />
+            <>
+              {/* Minimal title */}
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-primary">
+                  Add to Watchlist
+                </h2>
+              </div>
+              
+              {/* Search Input immediately visible */}
+              <SearchInput onImageUpload={handleImageUpload} onTextSearch={handleTextSearch} />
+              
+              {/* Optional help text below the inputs */}
+              <div className="text-center mt-8">
+                <p className="text-sm text-muted-foreground">
+                  Upload an image or enter a title to find streaming options
+                </p>
+              </div>
+            </>
           )}
 
           {appState === 'analyzing' && (
@@ -246,11 +283,6 @@ const Index = () => {
           <p>Powered by OpenAI Vision API & TMDB</p>
         </footer>
       </div>
-
-      {/* Floating Upload Button - only visible on upload screen */}
-      {appState === 'upload' && (
-        <FloatingUploadButton onImageUpload={handleImageUpload} />
-      )}
     </div>
   );
 };

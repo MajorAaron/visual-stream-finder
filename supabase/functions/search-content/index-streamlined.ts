@@ -103,14 +103,14 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[Request] 🔍 Processing query: "${query}"`);
+    console.log(`🔍 Processing query: "${query}"`);
     
     // Check if the query is a URL
     const isUrl = query.trim().match(/^https?:\/\/.+/);
     let contentToAnalyze = query;
     
     if (isUrl) {
-      console.log(`[Extract] 🌐 URL detected, fetching content...`);
+      console.log(`🌐 URL detected, fetching content...`);
       contentToAnalyze = await fetchUrlContent(query.trim());
     }
     
@@ -129,19 +129,16 @@ serve(async (req) => {
     // Get posters from TMDB for identified content
     const results = await enrichWithPosters(identifiedContent);
     
-    // Get real streaming data from Streaming Availability API
-    const finalResults = await enrichWithStreamingData(results);
-    
-    console.log(`[Response] ✅ Returning ${finalResults.length} results`);
+    console.log(`✅ Returning ${results.length} results`);
     
     return new Response(
-      JSON.stringify({ results: finalResults }),
+      JSON.stringify({ results }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   } catch (error) {
-    console.error('[Error] ❌ Error in search-content function:', error);
+    console.error('❌ Error in search-content function:', error);
     
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
@@ -163,7 +160,7 @@ async function fetchUrlContent(url: string): Promise<string> {
     });
     
     if (!response.ok) {
-      console.log(`[Extract] ❌ Failed to fetch URL: ${response.status}`);
+      console.log(`❌ Failed to fetch URL: ${response.status}`);
       return url; // Return the URL itself as fallback
     }
     
@@ -180,7 +177,7 @@ async function fetchUrlContent(url: string): Promise<string> {
     // Combine URL, title, and description for context
     return `URL: ${url}\nTitle: ${title}\nDescription: ${description}\n\nPage content (first 2000 chars):\n${html.substring(0, 2000)}`;
   } catch (error) {
-    console.log(`[Extract] ⚠️ Error fetching URL content: ${error.message}`);
+    console.log(`⚠️ Error fetching URL content: ${error.message}`);
     return url; // Return URL as fallback
   }
 }
@@ -193,7 +190,7 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
   }
   
   try {
-    console.log(`[OpenAI] 🤖 Identifying content with OpenAI...`);
+    console.log(`🤖 Identifying content with OpenAI...`);
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -219,7 +216,7 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
     });
     
     if (!response.ok) {
-      console.log(`[OpenAI] ❌ API error: ${response.status}`);
+      console.log(`❌ OpenAI API error: ${response.status}`);
       return [];
     }
     
@@ -227,7 +224,7 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
     const aiResponse = data.choices[0]?.message?.content;
     
     if (!aiResponse) {
-      console.log('[OpenAI] ❌ Empty response from OpenAI');
+      console.log('❌ Empty response from OpenAI');
       return [];
     }
     
@@ -238,28 +235,19 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
       let cleanResponse = aiResponse;
       if (cleanResponse.includes('```json')) {
         cleanResponse = cleanResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      } else if (cleanResponse.includes('```')) {
-        cleanResponse = cleanResponse.replace(/```\n?/g, '');
       }
-      
-      // Additional cleanup for any remaining markdown
-      cleanResponse = cleanResponse.trim();
-      
-      console.log(`[Parse] 📝 Attempting to parse: ${cleanResponse.substring(0, 200)}...`);
       result = JSON.parse(cleanResponse);
     } catch (parseError) {
-      console.log(`[Parse] ❌ Failed to parse OpenAI response: ${parseError.message}`);
-      console.log(`[Parse] 📝 Raw response was: ${aiResponse}`);
+      console.log(`❌ Failed to parse OpenAI response: ${parseError.message}`);
       return [];
     }
     
     if (result.error) {
-      console.log(`[Parse] ⚠️ No content identified: ${result.error}`);
+      console.log(`⚠️ No content identified: ${result.error}`);
       return [];
     }
     
     // Process streaming sources
-    console.log(`[Streaming] 📊 Processing ${result.streaming_sources?.length || 0} streaming sources from OpenAI`);
     const streamingSources: StreamingSource[] = [];
     if (result.streaming_sources && Array.isArray(result.streaming_sources)) {
       for (const source of result.streaming_sources) {
@@ -278,7 +266,6 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
     
     // If no streaming sources from AI, generate fallback sources
     if (streamingSources.length === 0) {
-      console.log(`[Streaming] 🔄 No sources from OpenAI, generating fallback sources`);
       streamingSources.push(...generateFallbackSources(result.title));
     }
     
@@ -286,7 +273,6 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
     if (originalUrl) {
       const sourceService = detectStreamingService(originalUrl);
       if (sourceService && !streamingSources.find(s => s.name === sourceService.name)) {
-        console.log(`[Streaming] 🎯 Adding detected source service: ${sourceService.name}`);
         streamingSources.unshift(sourceService);
       }
     }
@@ -306,7 +292,7 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
     }];
     
   } catch (error) {
-    console.error('[OpenAI] ❌ Error identifying content:', error);
+    console.error('❌ Error identifying content:', error);
     return [];
   }
 }
@@ -315,7 +301,7 @@ async function enrichWithPosters(results: ContentResult[]): Promise<ContentResul
   const tmdbApiKey = Deno.env.get('TMDB_API_KEY');
   
   if (!tmdbApiKey) {
-    console.log('[TMDB] ⚠️ API key not configured, returning without posters');
+    console.log('⚠️ TMDB API key not configured, returning without posters');
     return results;
   }
   
@@ -324,7 +310,7 @@ async function enrichWithPosters(results: ContentResult[]): Promise<ContentResul
       const searchType = result.type === 'tv' ? 'tv' : 'movie';
       const searchUrl = `https://api.themoviedb.org/3/search/${searchType}?api_key=${tmdbApiKey}&query=${encodeURIComponent(result.title)}`;
       
-      console.log(`[TMDB] 🖼️ Fetching poster for: ${result.title}`);
+      console.log(`🖼️ Fetching poster for: ${result.title}`);
       
       const response = await fetch(searchUrl);
       if (!response.ok) continue;
@@ -347,103 +333,14 @@ async function enrichWithPosters(results: ContentResult[]): Promise<ContentResul
         
         if (bestMatch.poster_path) {
           result.poster = `https://image.tmdb.org/t/p/w500${bestMatch.poster_path}`;
-          console.log(`[TMDB] ✅ Found poster for ${result.title}`);
+          console.log(`✅ Found poster for ${result.title}`);
         }
       }
     } catch (error) {
-      console.log(`[TMDB] ⚠️ Error fetching poster for ${result.title}: ${error.message}`);
+      console.log(`⚠️ Error fetching poster for ${result.title}: ${error.message}`);
     }
   }
   
-  return results;
-}
-
-async function enrichWithStreamingData(results: ContentResult[]): Promise<ContentResult[]> {
-  const streamingAvailabilityApiKey = Deno.env.get('STREAMING_AVAILABILITY_API_KEY');
-  
-  if (!streamingAvailabilityApiKey) {
-    console.log('[Streaming Availability] ⚠️ API key not configured, returning without streaming data');
-    return results;
-  }
-
-  for (const result of results) {
-    try {
-      const searchType = result.type === 'tv' ? 'series' : 'movie';
-      const searchUrl = `https://streaming-availability.p.rapidapi.com/shows/search/title?title=${encodeURIComponent(result.title)}&country=us&show_type=${searchType}&output_language=en`;
-      
-      console.log(`[Streaming Availability] 🔗 Fetching streaming data for: ${result.title}`);
-      
-      const headers = {
-        'X-RapidAPI-Key': streamingAvailabilityApiKey,
-        'X-RapidAPI-Host': 'streaming-availability.p.rapidapi.com'
-      };
-      
-      const response = await fetch(searchUrl, {
-        method: 'GET',
-        headers
-      });
-      
-      if (!response.ok) {
-        console.log(`[Streaming Availability] ❌ Failed to fetch streaming data for ${result.title}: ${response.status}`);
-        continue;
-      }
-
-      const searchData = await response.json();
-      console.log(`📊 Raw streaming results count: ${searchData?.length || 0}`);
-
-      // Find the matching title and year
-      let matchedShow: any = null;
-      if (searchData && searchData.length > 0) {
-        matchedShow = searchData.find((show: any) => {
-          const showYear = show.firstAirYear || show.releaseYear;
-          return Math.abs(showYear - result.year) <= 1; // Allow 1 year difference
-        }) || searchData[0]; // Fallback to first result
-        
-        console.log(`🎯 Best streaming match: ${matchedShow.title} (${matchedShow.releaseYear || matchedShow.firstAirYear})`);
-      }
-
-      if (!matchedShow) {
-        console.log(`[Streaming Availability] ⚠️ No streaming match found for ${result.title}`);
-        continue;
-      }
-
-      // Extract streaming sources from the matched show
-      const streamingSources: StreamingSource[] = [];
-      
-      if (matchedShow.streamingOptions && matchedShow.streamingOptions.us) {
-        for (const option of matchedShow.streamingOptions.us) {
-          const service = option.service;
-          console.log(`📺 Adding streaming source: ${service.name} (${option.type})`);
-          
-          const streamingSource: StreamingSource = {
-            name: service.name,
-            logo: service.imageSet?.lightThemeImage || `https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop`,
-            url: option.link, // This is the deep link from the API
-            type: option.type === 'subscription' ? 'subscription' : 
-                  option.type === 'rent' ? 'rent' : 
-                  option.type === 'buy' ? 'buy' : 'free',
-            price: option.price ? `$${option.price.amount}` : undefined
-          };
-          streamingSources.push(streamingSource);
-        }
-      }
-
-      // If no streaming sources found, generate fallback sources
-      if (streamingSources.length === 0) {
-        console.log(`[Streaming Availability] 🔄 No sources found, generating fallback sources for ${result.title}`);
-        streamingSources.push(...generateFallbackSources(result.title));
-      }
-
-      result.streamingSources = streamingSources;
-      console.log(`[Streaming Availability] ✅ Found ${streamingSources.length} streaming sources for ${result.title}`);
-
-    } catch (error) {
-      console.log(`[Streaming Availability] ⚠️ Error fetching streaming data for ${result.title}: ${error.message}`);
-      // Generate fallback sources on error
-      result.streamingSources = generateFallbackSources(result.title);
-    }
-  }
-
   return results;
 }
 
@@ -504,6 +401,7 @@ function generateSearchUrl(serviceId: string, title: string): string {
       return `https://www.google.com/search?q=${encodedTitle}+streaming`;
   }
 }
+
 function generateFallbackSources(title: string): StreamingSource[] {
   const fallbackServices = ['netflix', 'prime', 'disney', 'max', 'hulu'];
   const sources: StreamingSource[] = [];

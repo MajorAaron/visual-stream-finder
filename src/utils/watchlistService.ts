@@ -25,7 +25,6 @@ export class WatchlistService {
   static async addToWatchlist(content: DetectedContent): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('Adding to watchlist for user:', user?.id);
       
       if (!user) {
         console.error('No authenticated user');
@@ -51,14 +50,10 @@ export class WatchlistService {
         })
       };
 
-      console.log('Inserting watchlist item:', insertData);
-
       const { data, error } = await supabase
         .from('watchlist')
         .insert(insertData)
         .select();
-
-      console.log('Insert result:', { data, error });
 
       if (error) {
         console.error('Error adding to watchlist:', error);
@@ -94,22 +89,12 @@ export class WatchlistService {
 
   static async getWatchlist(): Promise<{ data: WatchlistItem[]; error?: string }> {
     try {
-      // First check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current user:', user?.id, user?.email);
-      
-      if (!user) {
-        console.log('No authenticated user found');
-        return { data: [], error: 'Not authenticated' };
-      }
-
+      // Use RLS instead of checking auth manually - the database will handle auth
       const { data, error } = await supabase
         .from('watchlist')
         .select('*')
         .eq('watched', false)
         .order('created_at', { ascending: false });
-
-      console.log('Watchlist query result:', { data, error });
 
       if (error) {
         console.error('Error fetching watchlist:', error);

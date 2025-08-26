@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +16,38 @@ interface SearchInputProps {
 export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchInputProps) => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [activeTab, setActiveTab] = useState('image');
+  const textInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus text input when switching to text search tab
+  useEffect(() => {
+    if (activeTab === 'text') {
+      // Longer delay to ensure the tab content is fully rendered
+      const timer = setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+          // Also try to select the text if there's any
+          textInputRef.current.select();
+        }
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
+  // Handle tab change with focus
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === 'text') {
+      // Additional focus attempt when tab changes
+      setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+          textInputRef.current.select();
+        }
+      }, 100);
+    }
+  };
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     // Handle rejected files
@@ -104,14 +136,20 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
 
   return (
     <Card className="p-8">
-      <Tabs defaultValue="image" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="image" className="flex items-center gap-2">
-            <ImageIcon className="h-4 w-4" />
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/50 border border-border h-16">
+          <TabsTrigger 
+            value="image" 
+            className="flex items-center gap-3 text-lg font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
+          >
+            <ImageIcon className="h-6 w-6" />
             Image Upload
           </TabsTrigger>
-          <TabsTrigger value="text" className="flex items-center gap-2">
-            <Type className="h-4 w-4" />
+          <TabsTrigger 
+            value="text" 
+            className="flex items-center gap-3 text-lg font-semibold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
+          >
+            <Type className="h-6 w-6" />
             Text Search
           </TabsTrigger>
         </TabsList>
@@ -176,11 +214,11 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
           </div>
         </TabsContent>
 
-        <TabsContent value="text" className="space-y-6">
-          <div className="text-center space-y-2">
-            <Search className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h2 className="text-2xl font-bold">Search by Title</h2>
-            <p className="text-muted-foreground">
+        <TabsContent value="text" className="space-y-8 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+          <div className="text-center space-y-3">
+            <Search className="mx-auto h-16 w-16 text-primary animate-pulse" />
+            <h2 className="text-3xl font-bold text-primary">Search by Title</h2>
+            <p className="text-muted-foreground text-lg">
               Enter the name of a movie or TV show to find streaming options
             </p>
           </div>
@@ -193,19 +231,21 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
                 onChange={(e) => setSearchText(e.target.value)}
                 onKeyPress={handleTextInputKeyPress}
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 text-xl py-6 px-4 border-2 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                ref={textInputRef}
               />
               <Button 
                 onClick={handleTextSearch}
                 disabled={isLoading || !searchText.trim()}
                 size="default"
+                className="px-8 py-6 text-lg font-semibold transition-all duration-200 hover:scale-105"
               >
-                <Search className="h-4 w-4 mr-2" />
+                <Search className="h-6 w-6 mr-3" />
                 Search
               </Button>
             </div>
             
-            <div className="text-xs text-muted-foreground text-center">
+            <div className="text-base text-muted-foreground text-center bg-muted/30 p-4 rounded-lg border border-border/50">
               Perfect for titles, IMDb URLs, or any shared links about movies and shows
             </div>
           </div>
