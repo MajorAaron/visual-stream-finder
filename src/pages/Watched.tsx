@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Star, Clock, Calendar, ArrowLeft, Trash2, RotateCcw } from 'lucide-react';
 import { useWatchedItems } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
+import { StreamingIcon } from '@/components/StreamingIcon';
 
 const typeColors = {
   movie: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -192,7 +193,6 @@ export default function Watched() {
                                 if (!acc[source.name]) {
                                   acc[source.name] = {
                                     name: source.name,
-                                    logo: source.logo,
                                     url: source.url, // Use the first URL found
                                     types: []
                                   };
@@ -215,15 +215,11 @@ export default function Watched() {
                                   onClick={() => window.open(service.url, '_blank')}
                                 >
                                   <div className="flex items-center gap-2 w-full">
-                                    <div className={`w-5 h-5 rounded p-0.5 flex items-center justify-center flex-shrink-0 ${
-                                      isDarkLogo(service.name) ? 'bg-white' : 'bg-transparent'
-                                    }`}>
-                                      <img
-                                        src={service.logo}
-                                        alt={service.name}
-                                        className="w-full h-full object-contain"
-                                      />
-                                    </div>
+                                    <StreamingIcon 
+                                      serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
+                                      serviceName={service.name}
+                                      className="w-5 h-5 flex-shrink-0"
+                                    />
                                     <div className="flex-1 text-left min-w-0">
                                       <div className="font-medium text-xs truncate">{service.name}</div>
                                     </div>

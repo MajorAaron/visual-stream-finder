@@ -216,7 +216,6 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                         if (!acc[source.name]) {
                           acc[source.name] = {
                             name: source.name,
-                            logo: source.logo,
                             url: source.url, // Use the first URL found
                             types: []
                           };
@@ -245,7 +244,6 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                                 <StreamingIcon 
                                   serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
                                   serviceName={service.name}
-                                  fallbackUrl={service.logo}
                                   className="w-8 h-8 flex-shrink-0"
                                 />
                                                               <div className="text-left flex-1 min-w-0">

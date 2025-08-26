@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getStreamingServiceIcon } from "../streaming-icons.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,7 +8,6 @@ const corsHeaders = {
 
 interface StreamingSource {
   name: string;
-  logo: string;
   url: string;
   type: 'subscription' | 'rent' | 'buy' | 'free';
   price?: string;
@@ -359,11 +357,9 @@ async function identifyContent(query: string, originalUrl?: string): Promise<Con
     if (result.streaming_sources && Array.isArray(result.streaming_sources)) {
       for (const source of result.streaming_sources) {
         const serviceId = source.service.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const icon = getStreamingServiceIcon(serviceId);
         
         streamingSources.push({
-          name: icon.name,
-          logo: icon.logo,
+          name: source.service,
           url: source.link || generateSearchUrl(serviceId, result.title),
           type: source.type || 'subscription',
           price: source.price
@@ -534,7 +530,6 @@ async function enrichWithStreamingData(results: ContentResult[]): Promise<Conten
             
             const streamingSource: StreamingSource = {
               name: service.name,
-              logo: service.imageSet?.lightThemeImage || `https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=40&h=40&fit=crop`,
               url: option.link, // This is the deep link from the API
               type: option.type === 'subscription' ? 'subscription' : 
                     option.type === 'rent' ? 'rent' : 
@@ -659,10 +654,8 @@ function detectStreamingService(url: string): StreamingSource | null {
   
   for (const service of services) {
     if (service.pattern.test(url)) {
-      const icon = getStreamingServiceIcon(service.id);
       return {
-        name: icon.name,
-        logo: icon.logo,
+        name: service.name,
         url: url,
         type: 'subscription'
       };
@@ -712,14 +705,27 @@ function generateFallbackSources(title: string): StreamingSource[] {
     .slice(0, Math.floor(Math.random() * 2) + 2);
   
   for (const serviceId of selectedServices) {
-    const icon = getStreamingServiceIcon(serviceId);
+    const serviceName = getServiceName(serviceId);
     sources.push({
-      name: icon.name,
-      logo: icon.logo,
+      name: serviceName,
       url: generateSearchUrl(serviceId, title),
       type: 'subscription'
     });
   }
   
   return sources;
+}
+
+function getServiceName(serviceId: string): string {
+  const serviceNames: { [key: string]: string } = {
+    'netflix': 'Netflix',
+    'prime': 'Prime Video',
+    'disney': 'Disney+',
+    'hulu': 'Hulu',
+    'max': 'Max',
+    'appletv': 'Apple TV+',
+    'peacock': 'Peacock',
+    'paramount': 'Paramount+'
+  };
+  return serviceNames[serviceId] || serviceId;
 }
