@@ -224,21 +224,21 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
           </div>
 
           <div className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-2">
               <Input
                 placeholder="e.g. The Matrix, https://www.imdb.com/title/tt0133093/, Stranger Things..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 onKeyPress={handleTextInputKeyPress}
                 disabled={isLoading}
-                className="flex-1 text-xl py-6 px-4 border-2 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                className="w-full sm:flex-1 text-xl py-6 px-4 border-2 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 ref={textInputRef}
               />
               <Button 
                 onClick={handleTextSearch}
                 disabled={isLoading || !searchText.trim()}
                 size="default"
-                className="px-8 py-6 text-lg font-semibold transition-all duration-200 hover:scale-105"
+                className="w-full sm:w-auto px-8 py-6 text-lg font-semibold transition-all duration-200 hover:scale-105"
               >
                 <Search className="h-6 w-6 mr-3" />
                 Search
