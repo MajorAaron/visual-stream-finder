@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Image as ImageIcon, X, Search, Type } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Search, Type, ClipboardPaste } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SearchInputProps {
@@ -134,6 +134,34 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        toast.error('Clipboard access is not available. Use Ctrl/Cmd+V to paste.');
+        if (textInputRef.current) textInputRef.current.focus();
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      const trimmed = text.trim();
+      if (!trimmed) {
+        toast.info('Clipboard is empty.');
+        if (textInputRef.current) textInputRef.current.focus();
+        return;
+      }
+      setSearchText(trimmed);
+      toast.success('Pasted from clipboard');
+      setTimeout(() => {
+        if (textInputRef.current) {
+          textInputRef.current.focus();
+          textInputRef.current.select();
+        }
+      }, 0);
+    } catch (error) {
+      toast.error('Failed to read clipboard. Check permissions and try again.');
+      if (textInputRef.current) textInputRef.current.focus();
+    }
+  };
+
   return (
     <Card className="p-8">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -234,6 +262,16 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
                 className="w-full sm:flex-1 text-xl py-6 px-4 border-2 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 ref={textInputRef}
               />
+              <Button 
+                onClick={handlePasteFromClipboard}
+                disabled={isLoading}
+                size="default"
+                variant="outline"
+                className="w-full sm:w-auto px-6 py-6 text-lg font-semibold transition-all duration-200"
+              >
+                <ClipboardPaste className="h-6 w-6 mr-2" />
+                Paste
+              </Button>
               <Button 
                 onClick={handleTextSearch}
                 disabled={isLoading || !searchText.trim()}
