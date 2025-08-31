@@ -156,11 +156,16 @@ const Index = () => {
       <header className="border-b bg-background/80 backdrop-blur-sm relative">
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl font-bold text-primary">AI Watchlist</h1>
-              <p className="text-sm text-muted-foreground hidden sm:block">
-                Welcome back, {user.user_metadata?.full_name || user.email}!
-              </p>
+            <div className="flex-1 flex items-center gap-2">
+              <Button onClick={() => navigate('/watchlist')} variant="outline" size="sm">
+                My Watchlist
+              </Button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-primary">AI Watchlist</h1>
+                <p className="text-sm text-muted-foreground hidden sm:block">
+                  Welcome back, {user.user_metadata?.full_name || user.email}!
+                </p>
+              </div>
             </div>
             
             {/* Desktop Navigation */}
