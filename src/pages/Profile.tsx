@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import type React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { ProfileService, type Profile } from "@/utils/profileService";
@@ -13,6 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DEFAULT_AVATARS } from "@/config/defaultAvatars";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Camera, Trash2, Save, User, Download, Smartphone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +34,7 @@ export default function Profile() {
   const [isPWAInstalled, setIsPWAInstalled] = useState(false);
   const [canInstallPWA, setCanInstallPWA] = useState(false);
   const deferredPromptRef = useRef<any>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
@@ -166,6 +170,26 @@ export default function Profile() {
         description: "Failed to upload avatar",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleSelectDefaultAvatar = async (url: string) => {
+    if (!user) return;
+    setIsUploading(true);
+    try {
+      const result = await ProfileService.updateProfile(user.id, { avatar_url: url });
+      if (result.success) {
+        toast({ title: "Success", description: "Avatar updated" });
+        await loadProfile();
+        setIsPickerOpen(false);
+      } else {
+        toast({ title: "Error", description: result.error || "Failed to update avatar", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Error selecting avatar:", error);
+      toast({ title: "Error", description: "Failed to update avatar", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -351,6 +375,32 @@ export default function Profile() {
                     onChange={handleAvatarUpload}
                     disabled={isUploading}
                   />
+
+                  <Dialog open={isPickerOpen} onOpenChange={setIsPickerOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={isUploading} className="w-full sm:w-auto">
+                        <User className="mr-2 h-4 w-4" /> Choose Avatar
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Choose a default avatar</DialogTitle>
+                        <DialogDescription>Select one of our preset avatars.</DialogDescription>
+                      </DialogHeader>
+                      <div className="grid grid-cols-5 sm:grid-cols-5 gap-3">
+                        {DEFAULT_AVATARS.map((url) => (
+                          <button
+                            key={url}
+                            onClick={() => handleSelectDefaultAvatar(url)}
+                            className="rounded-full p-1 border hover:border-primary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            disabled={isUploading}
+                          >
+                            <img src={url} alt="Avatar option" className="h-14 w-14 rounded-full" />
+                          </button>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
 
                   {profile?.avatar_url && (
                     <Button

@@ -107,19 +107,20 @@ export class ProfileService {
 
   static async deleteAvatar(userId: string, currentAvatarUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Extract file path from URL if it's a Supabase storage URL
-      if (currentAvatarUrl && currentAvatarUrl.includes('avatars/')) {
-        const urlParts = currentAvatarUrl.split('/');
-        const fileName = urlParts[urlParts.length - 1];
-        const filePath = fileName; // Don't include 'avatars/' prefix since we're already in the avatars bucket
+      // Only delete from Supabase storage if the URL points to the public avatars bucket
+      const storagePathMarker = '/storage/v1/object/public/avatars/';
+      if (currentAvatarUrl && currentAvatarUrl.startsWith('http') && currentAvatarUrl.includes(storagePathMarker)) {
+        const filePath = currentAvatarUrl.substring(currentAvatarUrl.indexOf(storagePathMarker) + storagePathMarker.length);
 
-        // Delete from storage
-        const { error: deleteError } = await supabase.storage
-          .from('avatars')
-          .remove([filePath]);
+        if (filePath && !filePath.includes('/')) {
+          // Delete from storage
+          const { error: deleteError } = await supabase.storage
+            .from('avatars')
+            .remove([filePath]);
 
-        if (deleteError) {
-          console.error('Error deleting avatar file:', deleteError);
+          if (deleteError) {
+            console.error('Error deleting avatar file:', deleteError);
+          }
         }
       }
 
