@@ -57,7 +57,7 @@ export default function Watchlist() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
             <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
-              <Link to="/">
+              <Link to="/search">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Search
@@ -98,14 +98,14 @@ export default function Watchlist() {
             <p className="text-muted-foreground mb-6 text-sm sm:text-base">
               Start discovering movies and TV shows to build your personal watchlist
             </p>
-            <Link to="/">
+            <Link to="/search">
               <Button>
                 Start Analyzing Images
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-6">
             {watchlist.map((item) => (
               <Card key={item.id} className="overflow-hidden w-full shadow-lg hover:shadow-xl transition-shadow duration-200">
                 <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
@@ -115,12 +115,12 @@ export default function Watchlist() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <CardContent className="p-3 sm:p-4">
+                <CardContent className="p-2 sm:p-4">
                   <div className="space-y-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-lg sm:text-xl line-clamp-2 mb-2">{item.title}</h3>
-                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm text-muted-foreground">
+                        <h3 className="font-bold text-base sm:text-xl line-clamp-2 mb-2">{item.title}</h3>
+                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             {item.year}
@@ -144,7 +144,7 @@ export default function Watchlist() {
                       </Badge>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="hidden sm:flex flex-wrap gap-2">
                       {item.genre?.map((g) => (
                         <Badge key={g} variant="secondary" className="text-xs">
                           {g}
@@ -153,11 +153,11 @@ export default function Watchlist() {
                     </div>
 
                     {item.plot && (
-                      <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
+                      <p className="hidden sm:block text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
                     )}
 
                     {/* Streaming Sources / YouTube Link */}
-                    <div className="space-y-3">
+                    <div className="hidden sm:block space-y-3">
                       {item.type === 'youtube' ? (
                         <>
                           <h4 className="font-semibold text-sm">Watch on YouTube:</h4>
@@ -246,12 +246,32 @@ export default function Watchlist() {
                       )}
                     </div>
 
+                    {/* Mobile quick actions */}
+                    <div className="flex gap-2 sm:hidden">
+                      <Button
+                        onClick={() => markAsWatched(item.title, item.year)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs"
+                      >
+                        <Star className="w-4 h-4 mr-1" /> Watched
+                      </Button>
+                      <Button
+                        onClick={() => removeFromWatchlist(item.title, item.year)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" /> Remove
+                      </Button>
+                    </div>
+
                     {/* Mark as Watched button */}
                     <Button
                       onClick={() => markAsWatched(item.title, item.year)}
                       variant="outline"
                       size="sm"
-                      className="w-full text-green-500 hover:text-green-600 hover:bg-green-50 h-10 sm:h-9 mb-2"
+                      className="hidden sm:block w-full text-green-500 hover:text-green-600 hover:bg-green-50 h-10 sm:h-9 mb-2"
                     >
                       <Star className="w-4 h-4 mr-2" />
                       Mark as Watched
@@ -262,7 +282,7 @@ export default function Watchlist() {
                       onClick={() => removeFromWatchlist(item.title, item.year)}
                       variant="outline"
                       size="sm"
-                      className="w-full text-red-500 hover:text-red-600 hover:bg-red-50 h-10 sm:h-9"
+                      className="hidden sm:block w-full text-red-500 hover:text-red-600 hover:bg-red-50 h-10 sm:h-9"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Remove from Watchlist

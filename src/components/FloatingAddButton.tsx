@@ -12,11 +12,11 @@ export function FloatingAddButton({ className }: FloatingAddButtonProps) {
   const location = useLocation();
 
   const handleClick = () => {
-    navigate('/');
+    navigate('/search');
   };
 
   // Don't show the button on the Index page (add to watchlist page)
-  if (location.pathname === '/') {
+  if (location.pathname === '/search') {
     return null;
   }
 

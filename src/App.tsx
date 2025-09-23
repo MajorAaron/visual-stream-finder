@@ -31,7 +31,8 @@ function App() {
           
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Watchlist />} />
+            <Route path="/search" element={<Index />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/watched" element={<Watched />} />
