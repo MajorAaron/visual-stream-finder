@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Image as ImageIcon, X, Search, Type, ClipboardPaste } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Search, Type, ClipboardPaste, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SearchInputProps {
@@ -18,6 +18,7 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('image');
   const textInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus text input when switching to text search tab
   useEffect(() => {
@@ -94,8 +95,10 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
     }
   }, [onImageUpload]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
+    noClick: true,
+    noKeyboard: true,
     accept: {
       'image/jpeg': ['.jpeg', '.jpg'],
       'image/png': ['.png'],
@@ -109,6 +112,27 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
 
   const clearImage = () => {
     setPreviewImage(null);
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+  };
+
+  const handleCameraClick = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.click();
+    }
+  };
+
+  const handleCameraCapture = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Re-use the onDrop logic for validation and processing
+      onDrop([file], []);
+    }
+    // Reset the input value to allow capturing the same file again
+    if (event.target) {
+      event.target.value = '';
+    }
   };
 
   const handleTextSearch = () => {
@@ -199,19 +223,33 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
               } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <input {...getInputProps()} />
-              <div className="flex flex-col items-center gap-4">
-                <Upload className="h-16 w-16 text-muted-foreground" />
-                <div className="space-y-2 text-center">
-                  <p className="text-lg font-medium">
-                    {isDragActive ? 'Drop your image here' : 'Drag & drop your image here'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    or click to browse files
-                  </p>
+              <div {...getRootProps()} className="flex flex-col items-center gap-4 text-center">
+                <input {...getInputProps()} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  ref={cameraInputRef}
+                  onChange={handleCameraCapture}
+                  className="hidden"
+                />
+                <Upload className="h-12 w-12 text-muted-foreground" />
+                <p className="text-lg font-medium">
+                  {isDragActive ? 'Drop your image here' : 'Drag & drop or take a picture'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your screen, a poster, any image with a movie or show
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                  <Button onClick={open} variant="glow" size="lg" disabled={isLoading}>
+                    <Upload className="mr-2 h-5 w-5" />
+                    Choose Image
+                  </Button>
+                  <Button onClick={handleCameraClick} variant="outline" size="lg" disabled={isLoading}>
+                    <Camera className="mr-2 h-5 w-5" />
+                    Use Camera
+                  </Button>
                 </div>
-                <Button variant="glow" size="lg" disabled={isLoading}>
-                  Choose Image
-                </Button>
               </div>
             </div>
           ) : (
