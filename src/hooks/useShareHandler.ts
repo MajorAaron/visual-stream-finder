@@ -60,8 +60,8 @@ export function useShareHandler() {
           setIsProcessing(false);
         }
         
-        // Clean up URL
-        navigate('/', { replace: true });
+        // Clean up URL and navigate to search page
+        navigate('/search', { replace: true });
         
       } else if (action === 'shared-text') {
         // Handle shared text/URL
@@ -83,8 +83,8 @@ export function useShareHandler() {
           });
         }
         
-        // Clean up URL
-        navigate('/', { replace: true });
+        // Clean up URL and navigate to search page
+        navigate('/search', { replace: true });
         
       } else if (action === 'share-error') {
         toast({
@@ -93,8 +93,8 @@ export function useShareHandler() {
           variant: "destructive",
         });
         
-        // Clean up URL
-        navigate('/', { replace: true });
+        // Clean up URL and navigate to search page
+        navigate('/search', { replace: true });
       }
     };
 

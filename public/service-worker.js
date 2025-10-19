@@ -106,16 +106,16 @@ async function handleSharedContent(request) {
       
       // Store in IndexedDB for retrieval by the app
       await storeSharedImage(base64, mimeType, { title, text, url });
-      
-      // Redirect to app with share flag
+
+      // Redirect to app with share flag (useShareHandler will navigate to /search)
       return Response.redirect(BASE_PATH + '/?action=shared-image', 303);
     } else if (url || text) {
-      // Handle text/URL share
+      // Handle text/URL share (useShareHandler will navigate to /search)
       const params = new URLSearchParams();
       if (url) params.set('url', url);
       if (text) params.set('text', text);
       if (title) params.set('title', title);
-      
+
       return Response.redirect(`${BASE_PATH}/?action=shared-text&${params.toString()}`, 303);
     }
     
@@ -139,8 +139,8 @@ async function handleSharedText(request) {
     const sharedUrl = params.get('url') || '';
     
     console.log('Received text share:', { title, text, url: sharedUrl });
-    
-    // Redirect to app with parameters
+
+    // Redirect to app with parameters (useShareHandler will navigate to /search)
     const appParams = new URLSearchParams();
     if (sharedUrl) appParams.set('url', sharedUrl);
     if (text) appParams.set('text', text);

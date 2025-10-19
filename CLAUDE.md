@@ -104,6 +104,12 @@ npx supabase stop
 - Real-time sync via Supabase subscriptions
 - Unique constraints prevent duplicates
 
+## Architecture Documentation
+
+For detailed visual diagrams and comprehensive architecture documentation:
+
+- [Search Workflow Architecture](/docs/search-workflow-architecture.md) - Complete search flow diagrams (flowchart + sequence), API interactions, and performance considerations
+
 ## Database Schema
 
 ```sql
@@ -159,6 +165,19 @@ For detailed documentation on edge functions, see:
 - [Search Content Function Documentation](/docs/edge-functions/search-content.md)
 - [Search Content Update Documentation](/docs/edge-functions/search-content-update.md) - OpenAI integration changes
 - [Search Content Logging Improvement](/docs/edge-functions/search-content-logging-improvement.md) - Enhanced logging with step prefixes
+
+## Features
+
+### Web Share Target API
+
+The app supports receiving shared content from other apps via the Web Share Target API:
+- **Image Sharing**: Share images from Photos, Camera, or other apps directly to the app
+- **Text Sharing**: Share movie titles, URLs, or text content
+- **Automatic Search**: Shared content automatically triggers the search process
+- **PWA Integration**: Appears in native share sheet when installed as PWA
+
+For detailed documentation, see:
+- [Web Share Target API Integration](/docs/features/web-share-target.md)
 
 ## Deployment
 
