@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import Watchlist from "./pages/Watchlist";
 import Watched from "./pages/Watched";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 import "./App.css";
 
@@ -36,6 +37,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/watched" element={<Watched />} />
+            <Route path="/favorites" element={<Favorites />} />
           </Route>
           
           <Route path="*" element={<NotFound />} />

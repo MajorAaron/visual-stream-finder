@@ -179,6 +179,9 @@ const Index = () => {
               <Button onClick={() => navigate('/watched')} variant="outline" size="sm">
                 Watched
               </Button>
+              <Button onClick={() => navigate('/favorites')} variant="outline" size="sm">
+                Favorites
+              </Button>
               <Button onClick={signOut} variant="outline" size="sm">
                 Sign Out
               </Button>
@@ -233,6 +236,16 @@ const Index = () => {
                   className="justify-start"
                 >
                   Watched
+                </Button>
+                <Button 
+                  onClick={() => {
+                    navigate('/favorites');
+                    setIsMobileMenuOpen(false);
+                  }} 
+                  variant="ghost" 
+                  className="justify-start"
+                >
+                  Favorites
                 </Button>
                 <Button 
                   onClick={() => {
