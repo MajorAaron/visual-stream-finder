@@ -54,6 +54,19 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
     const params = new URLSearchParams({ rel: '0', modestbranding: '1' });
     return `https://www.youtube.com/embed/${id}?${params.toString()}`;
   };
+
+  // Fallback: build an embeddable player using a YouTube search playlist
+  // This does not require API keys and helps ensure we can display a trailer.
+  const getYouTubeSearchEmbedUrl = (title: string, year?: number): string => {
+    const query = `${title} ${year || ''} official trailer`.trim();
+    const params = new URLSearchParams({
+      rel: '0',
+      modestbranding: '1',
+      listType: 'search',
+      list: query
+    });
+    return `https://www.youtube.com/embed?${params.toString()}`;
+  };
   
   // Memoize sorted results to prevent unnecessary re-renders
   const sortedResults = useMemo(() => {
@@ -233,13 +246,14 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
 
             {/* YouTube Preview (embedded) */}
             {(() => {
-              const embedUrl = getYouTubeEmbedUrl(content.youtubeUrl);
-              if (embedUrl) {
+              // Primary: if backend provided a direct YouTube URL, try to embed it by ID
+              const directEmbedUrl = getYouTubeEmbedUrl(content.youtubeUrl);
+              if (directEmbedUrl) {
                 return (
                   <div className="p-4 pt-0">
                     <AspectRatio ratio={16 / 9}>
                       <iframe
-                        src={embedUrl}
+                        src={directEmbedUrl}
                         title={`YouTube preview for ${content.title}`}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                         referrerPolicy="strict-origin-when-cross-origin"
@@ -250,7 +264,28 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                   </div>
                 );
               }
-              // Fallback: show a link if we have a URL but no embeddable ID
+
+              // Secondary fallback: if no direct URL, embed a search-based playlist for the trailer
+              // Skip this for explicit YouTube-type items to avoid unrelated results
+              if (content.type !== 'youtube' && content.title) {
+                const searchEmbedUrl = getYouTubeSearchEmbedUrl(content.title, content.year);
+                return (
+                  <div className="p-4 pt-0">
+                    <AspectRatio ratio={16 / 9}>
+                      <iframe
+                        src={searchEmbedUrl}
+                        title={`YouTube trailer search for ${content.title}`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allowFullScreen
+                        className="w-full h-full rounded-md border"
+                      />
+                    </AspectRatio>
+                  </div>
+                );
+              }
+
+              // Fallback: show a link if we have a non-embeddable URL
               if (content.youtubeUrl) {
                 return (
                   <div className="p-4 pt-0">
@@ -268,6 +303,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                   </div>
                 );
               }
+
               return null;
             })()}
           </Card>
