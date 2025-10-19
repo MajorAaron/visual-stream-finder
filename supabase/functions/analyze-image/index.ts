@@ -702,6 +702,24 @@ serve(async (req) => {
         console.log(`✅ Content processing complete - ${streamingSources.length} streaming sources found`);
         console.groupEnd();
         
+        // Best-effort: also try to fetch a YouTube trailer for preview embedding
+        try {
+          const trailerQuery = `${item.title} ${item.year || ''} official trailer`.trim();
+          const trailerData = await fetchYouTubeData(trailerQuery);
+          if (trailerData?.url) {
+            return {
+              ...item,
+              poster,
+              streamingSources,
+              releaseDate: `${item.year}`,
+              youtubeUrl: trailerData.url,
+              channelName: trailerData.channelName
+            };
+          }
+        } catch (ytErr) {
+          console.log(`⚠️  Trailer fetch failed for ${item.title}: ${ytErr instanceof Error ? ytErr.message : String(ytErr)}`);
+        }
+
         return {
           ...item,
           poster,

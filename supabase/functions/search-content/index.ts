@@ -549,10 +549,36 @@ async function enrichWithStreamingData(results: ContentResult[]): Promise<Conten
         result.streamingSources = streamingSources;
         console.log(`[Streaming Availability] ✅ Found ${streamingSources.length} streaming sources for ${result.title}`);
 
+        // Additionally, attempt to fetch a YouTube trailer link for previews
+        try {
+          const trailerQuery = `${result.title} ${result.year || ''} official trailer`.trim();
+          const trailerData = await fetchYouTubeData(trailerQuery);
+          if (trailerData?.url) {
+            result.youtubeUrl = trailerData.url;
+            result.channelName = trailerData.channelName;
+            console.log(`[YouTube] 🎬 Trailer found for ${result.title}`);
+          } else {
+            console.log(`[YouTube] ⚠️ No trailer found for ${result.title}`);
+          }
+        } catch (ytErr) {
+          console.log(`[YouTube] ⚠️ Error fetching trailer for ${result.title}: ${ytErr instanceof Error ? ytErr.message : String(ytErr)}`);
+        }
+
       } catch (error) {
         console.log(`[Streaming Availability] ⚠️ Error fetching streaming data for ${result.title}: ${error.message}`);
         // Generate fallback sources on error
         result.streamingSources = generateFallbackSources(result.title);
+        // Best-effort trailer fetch even if streaming API failed
+        try {
+          const trailerQuery = `${result.title} ${result.year || ''} official trailer`.trim();
+          const trailerData = await fetchYouTubeData(trailerQuery);
+          if (trailerData?.url) {
+            result.youtubeUrl = trailerData.url;
+            result.channelName = trailerData.channelName;
+          }
+        } catch (trailerErr) {
+          console.log(`[YouTube] ⚠️ Trailer fetch fallback error for ${result.title}: ${trailerErr instanceof Error ? trailerErr.message : String(trailerErr)}`);
+        }
       }
     }
   }

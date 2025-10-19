@@ -6,6 +6,7 @@ import { ExternalLink, Star, Clock, Calendar, Bookmark, BookmarkCheck } from 'lu
 import { WatchlistService } from '@/utils/watchlistService';
 import { DetectedContent } from '@/utils/aiAnalysis';
 import { StreamingIcon } from '@/components/StreamingIcon';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 interface StreamingSource {
   name: string;
@@ -32,6 +33,25 @@ const typeColors = {
 
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  
+  const getYouTubeVideoId = (url?: string): string | null => {
+    if (!url) return null;
+    const patterns = [
+      /[?&]v=([a-zA-Z0-9_-]{11})/,
+      /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+      /embed\/([a-zA-Z0-9_-]{11})/
+    ];
+    for (const re of patterns) {
+      const m = url.match(re);
+      if (m && m[1]) return m[1];
+    }
+    return null;
+  };
+  
+  const getYouTubeEmbedUrl = (url?: string): string | null => {
+    const id = getYouTubeVideoId(url);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+  };
   
   // Memoize sorted results to prevent unnecessary re-renders
   const sortedResults = useMemo(() => {
@@ -208,6 +228,46 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                 </div>
               </div>
             </div>
+
+            {/* YouTube Preview (embedded) */}
+            {(() => {
+              const embedUrl = getYouTubeEmbedUrl(content.youtubeUrl);
+              if (embedUrl) {
+                return (
+                  <div className="p-4 pt-0">
+                    <AspectRatio ratio={16 / 9}>
+                      <iframe
+                        src={embedUrl}
+                        title={`YouTube preview for ${content.title}`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allowFullScreen
+                        className="w-full h-full rounded-md border"
+                      />
+                    </AspectRatio>
+                  </div>
+                );
+              }
+              // Fallback: show a link if we have a URL but no embeddable ID
+              if (content.youtubeUrl) {
+                return (
+                  <div className="p-4 pt-0">
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-auto px-3 py-2"
+                    >
+                      <a href={content.youtubeUrl} target="_blank" rel="noopener noreferrer">
+                        <span className="mr-2">Preview on YouTube</span>
+                        <ExternalLink className="inline-block w-4 h-4" />
+                      </a>
+                    </Button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </Card>
         ))}
       </div>

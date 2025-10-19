@@ -44,10 +44,9 @@ export class WatchlistService {
         confidence: content.confidence,
         user_id: user.id,
         watched: false,
-        ...(content.type === 'youtube' && {
-          youtube_url: content.youtubeUrl,
-          channel_name: content.channelName
-        })
+        // Persist YouTube preview info when available (for all types)
+        youtube_url: content.youtubeUrl || null,
+        channel_name: content.channelName || null
       };
 
       const { data, error } = await supabase

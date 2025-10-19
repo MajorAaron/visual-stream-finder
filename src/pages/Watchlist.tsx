@@ -158,7 +158,7 @@ export default function Watchlist() {
 
                     {/* Streaming Sources / YouTube Link */}
                     <div className="hidden sm:block space-y-3">
-                      {item.type === 'youtube' ? (
+                      {item.type === 'youtube' || (item as any).youtube_url ? (
                         <>
                           <h4 className="font-semibold text-sm">Watch on YouTube:</h4>
                           <Button
