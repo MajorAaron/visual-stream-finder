@@ -440,6 +440,30 @@ async function enrichWithPosters(results: ContentResult[]): Promise<ContentResul
           result.poster = `https://image.tmdb.org/t/p/w500${bestMatch.poster_path}`;
           console.log(`[TMDB] ✅ Found poster for ${result.title}`);
         }
+
+        // Try to fetch an official trailer from TMDB (YouTube)
+        try {
+          const tmdbId = bestMatch.id;
+          if (tmdbId && !result.youtubeUrl) {
+            const videosUrl = `https://api.themoviedb.org/3/${searchType}/${tmdbId}/videos?api_key=${tmdbApiKey}`;
+            const videosResp = await fetch(videosUrl);
+            if (videosResp.ok) {
+              const videosData = await videosResp.json();
+              const videos: Array<{ key: string; name: string; type: string; official?: boolean; site: string }>
+                = videosData.results || [];
+              // Prefer official trailers on YouTube
+              const preferred = videos.find(v => v.site === 'YouTube' && v.type === 'Trailer' && v.official) 
+                || videos.find(v => v.site === 'YouTube' && v.type === 'Trailer' && /official/i.test(v.name))
+                || videos.find(v => v.site === 'YouTube' && v.type === 'Trailer');
+              if (preferred?.key) {
+                result.youtubeUrl = `https://www.youtube.com/watch?v=${preferred.key}`;
+                console.log(`[TMDB] 🎬 Trailer set from TMDB for ${result.title}`);
+              }
+            }
+          }
+        } catch (tmdbTrailerErr) {
+          console.log(`[TMDB] ⚠️ Error fetching trailer for ${result.title}: ${tmdbTrailerErr instanceof Error ? tmdbTrailerErr.message : String(tmdbTrailerErr)}`);
+        }
       }
     } catch (error) {
       console.log(`[TMDB] ⚠️ Error fetching poster for ${result.title}: ${error.message}`);
@@ -549,35 +573,39 @@ async function enrichWithStreamingData(results: ContentResult[]): Promise<Conten
         result.streamingSources = streamingSources;
         console.log(`[Streaming Availability] ✅ Found ${streamingSources.length} streaming sources for ${result.title}`);
 
-        // Additionally, attempt to fetch a YouTube trailer link for previews
-        try {
-          const trailerQuery = `${result.title} ${result.year || ''} official trailer`.trim();
-          const trailerData = await fetchYouTubeData(trailerQuery);
-          if (trailerData?.url) {
-            result.youtubeUrl = trailerData.url;
-            result.channelName = trailerData.channelName;
-            console.log(`[YouTube] 🎬 Trailer found for ${result.title}`);
-          } else {
-            console.log(`[YouTube] ⚠️ No trailer found for ${result.title}`);
+        // Additionally, attempt to fetch a YouTube trailer link for previews (only if not already set from TMDB)
+        if (!result.youtubeUrl) {
+          try {
+            const trailerQuery = `${result.title} ${result.year || ''} official trailer`.trim();
+            const trailerData = await fetchYouTubeData(trailerQuery);
+            if (trailerData?.url) {
+              result.youtubeUrl = trailerData.url;
+              result.channelName = trailerData.channelName;
+              console.log(`[YouTube] 🎬 Trailer found for ${result.title}`);
+            } else {
+              console.log(`[YouTube] ⚠️ No trailer found for ${result.title}`);
+            }
+          } catch (ytErr) {
+            console.log(`[YouTube] ⚠️ Error fetching trailer for ${result.title}: ${ytErr instanceof Error ? ytErr.message : String(ytErr)}`);
           }
-        } catch (ytErr) {
-          console.log(`[YouTube] ⚠️ Error fetching trailer for ${result.title}: ${ytErr instanceof Error ? ytErr.message : String(ytErr)}`);
         }
 
       } catch (error) {
         console.log(`[Streaming Availability] ⚠️ Error fetching streaming data for ${result.title}: ${error.message}`);
         // Generate fallback sources on error
         result.streamingSources = generateFallbackSources(result.title);
-        // Best-effort trailer fetch even if streaming API failed
-        try {
-          const trailerQuery = `${result.title} ${result.year || ''} official trailer`.trim();
-          const trailerData = await fetchYouTubeData(trailerQuery);
-          if (trailerData?.url) {
-            result.youtubeUrl = trailerData.url;
-            result.channelName = trailerData.channelName;
+        // Best-effort trailer fetch even if streaming API failed (skip if already set)
+        if (!result.youtubeUrl) {
+          try {
+            const trailerQuery = `${result.title} ${result.year || ''} official trailer`.trim();
+            const trailerData = await fetchYouTubeData(trailerQuery);
+            if (trailerData?.url) {
+              result.youtubeUrl = trailerData.url;
+              result.channelName = trailerData.channelName;
+            }
+          } catch (trailerErr) {
+            console.log(`[YouTube] ⚠️ Trailer fetch fallback error for ${result.title}: ${trailerErr instanceof Error ? trailerErr.message : String(trailerErr)}`);
           }
-        } catch (trailerErr) {
-          console.log(`[YouTube] ⚠️ Trailer fetch fallback error for ${result.title}: ${trailerErr instanceof Error ? trailerErr.message : String(trailerErr)}`);
         }
       }
     }
@@ -598,8 +626,8 @@ async function fetchYouTubeData(videoTitle: string): Promise<{ thumbnail: string
   try {
     console.log(`[YouTube] 🎥 Fetching data for: ${videoTitle}`);
     
-    // Search for videos using YouTube Data API v3
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(videoTitle)}&type=video&maxResults=5&key=${youtubeApiKey}`;
+    // Search for videos using YouTube Data API v3 (prefer embeddable, trailer-like titles)
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(videoTitle)}&type=video&videoEmbeddable=true&maxResults=5&key=${youtubeApiKey}`;
     
     const searchResponse = await fetch(searchUrl);
     
@@ -616,8 +644,16 @@ async function fetchYouTubeData(videoTitle: string): Promise<{ thumbnail: string
       return null;
     }
 
-    // Get the first result (most relevant)
-    const video = searchData.items[0];
+    // Prefer results that look like official trailers
+    const pickTrailer = (items: any[]): any => {
+      const trailerRegex = /(official|final)\s+trailer/i;
+      const genericTrailerRegex = /trailer/i;
+      const byOfficial = items.find((it) => trailerRegex.test(it.snippet?.title || ''));
+      if (byOfficial) return byOfficial;
+      const byTrailer = items.find((it) => genericTrailerRegex.test(it.snippet?.title || ''));
+      return byTrailer || items[0];
+    };
+    const video = pickTrailer(searchData.items);
     const videoId = video.id.videoId;
     console.log(`🎯 Selected video ID: ${videoId}`);
     

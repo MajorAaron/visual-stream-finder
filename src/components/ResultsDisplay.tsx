@@ -50,7 +50,9 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
   
   const getYouTubeEmbedUrl = (url?: string): string | null => {
     const id = getYouTubeVideoId(url);
-    return id ? `https://www.youtube.com/embed/${id}` : null;
+    if (!id) return null;
+    const params = new URLSearchParams({ rel: '0', modestbranding: '1' });
+    return `https://www.youtube.com/embed/${id}?${params.toString()}`;
   };
   
   // Memoize sorted results to prevent unnecessary re-renders
