@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Star, Clock, Calendar, ArrowLeft, Trash2, RotateCcw } from 'lucide-react';
 import { useWatchedItems } from '@/hooks/useWatchlist';
+import { WatchlistService } from '@/utils/watchlistService';
 import { useAuth } from '@/hooks/useAuth';
 import { StreamingIcon } from '@/components/StreamingIcon';
 
@@ -38,7 +39,7 @@ const isDarkLogo = (serviceName: string) => {
 
 export default function Watched() {
   const { user, signOut } = useAuth();
-  const { watchedItems, loading, markAsUnwatched, removeFromWatchlist } = useWatchedItems();
+  const { watchedItems, loading, markAsUnwatched, removeFromWatchlist, refreshWatchedItems } = useWatchedItems();
 
   // Auth is now handled by ProtectedRoute wrapper
 
@@ -74,6 +75,11 @@ export default function Watched() {
               <Link to="/watchlist">
                 <Button variant="outline" size="sm">
                   My Watchlist
+                </Button>
+              </Link>
+              <Link to="/favorites">
+                <Button variant="outline" size="sm">
+                  Favorites
                 </Button>
               </Link>
               <p className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">
@@ -239,6 +245,20 @@ export default function Watched() {
                         </div>
                       )}
                     </div>
+
+                    {/* Favorite button */}
+                    <Button
+                      onClick={async () => {
+                        const { success } = await WatchlistService.setFavorite(item.title, item.year, !item.favorite);
+                        if (success) await refreshWatchedItems();
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className={`w-full ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''} h-10 sm:h-9 mb-2`}
+                    >
+                      <Star className={`w-4 h-4 mr-2 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                      {item.favorite ? 'Unfavorite' : 'Favorite'}
+                    </Button>
 
                     {/* Mark as Unwatched button */}
                     <Button

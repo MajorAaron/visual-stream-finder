@@ -1,4 +1,4 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,39 +8,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { StreamingIcon } from '@/components/StreamingIcon';
 
 const typeColors = {
-  movie: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  tv: "bg-green-500/20 text-green-400 border-green-500/30",
-  documentary: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  youtube: "bg-red-500/20 text-red-400 border-red-500/30"
+  movie: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  tv: 'bg-green-500/20 text-green-400 border-green-500/30',
+  documentary: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  youtube: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
-
-
-// Known dark logos that need light backgrounds for visibility
-const darkLogos = [
-  'apple tv',
-  'hbo max', 
-  'hbo',
-  'netflix',
-  'amazon prime video',
-  'disney+',
-  'peacock',
-  'paramount+',
-  'showtime',
-  'starz'
-];
-
-const isDarkLogo = (serviceName: string) => {
-  return darkLogos.some(darkService => 
-    serviceName.toLowerCase().includes(darkService.toLowerCase())
-  );
-};
-
-export default function Watchlist() {
+export default function Favorites() {
   const { user, signOut } = useAuth();
-  const { watchlist, loading, removeFromWatchlist, markAsWatched, setFavorite } = useWatchlist();
-
-  // Auth is now handled by ProtectedRoute wrapper
+  const { favorites, loading, removeFromWatchlist, setFavorite } = useWatchlist();
 
   if (loading) {
     return (
@@ -64,21 +40,19 @@ export default function Watchlist() {
                 </Button>
               </Link>
               <div className="min-w-0 flex-1 sm:flex-none">
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary">My Watchlist</h1>
-                <p className="text-sm text-muted-foreground">
-                  {watchlist.length} saved items
-                </p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-primary">Favorites</h1>
+                <p className="text-sm text-muted-foreground">{favorites.length} favorited items</p>
               </div>
             </div>
             <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+              <Link to="/watchlist">
+                <Button variant="outline" size="sm">
+                  My Watchlist
+                </Button>
+              </Link>
               <Link to="/watched">
                 <Button variant="outline" size="sm">
                   Watched
-                </Button>
-              </Link>
-              <Link to="/favorites">
-                <Button variant="outline" size="sm">
-                  Favorites
                 </Button>
               </Link>
               <p className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">
@@ -94,28 +68,26 @@ export default function Watchlist() {
 
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {watchlist.length === 0 ? (
+        {favorites.length === 0 ? (
           <div className="text-center py-12 sm:py-16 px-4">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Star className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">Your watchlist is empty</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">No favorites yet</h2>
             <p className="text-muted-foreground mb-6 text-sm sm:text-base">
-              Start discovering movies and TV shows to build your personal watchlist
+              Star items you love to watch over and over
             </p>
             <Link to="/search">
-              <Button>
-                Start Analyzing Images
-              </Button>
+              <Button>Find Titles</Button>
             </Link>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-6">
-            {watchlist.map((item) => (
+            {favorites.map((item) => (
               <Card key={item.id} className="overflow-hidden w-full shadow-lg hover:shadow-xl transition-shadow duration-200">
                 <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
                   <img
-                    src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
+                    src={item.poster || 'https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop'}
                     alt={`${item.title} poster`}
                     className="w-full h-full object-cover"
                   />
@@ -149,19 +121,7 @@ export default function Watchlist() {
                       </Badge>
                     </div>
 
-                    <div className="hidden sm:flex flex-wrap gap-2">
-                      {item.genre?.map((g) => (
-                        <Badge key={g} variant="secondary" className="text-xs">
-                          {g}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    {item.plot && (
-                      <p className="hidden sm:block text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
-                    )}
-
-                    {/* Streaming Sources / YouTube Link */}
+                    {/* Streaming Sources / YouTube */}
                     <div className="hidden sm:block space-y-3">
                       {item.type === 'youtube' || (item as any).youtube_url ? (
                         <>
@@ -179,9 +139,7 @@ export default function Watchlist() {
                               <div className="flex-1 text-left min-w-0">
                                 <div className="font-medium text-xs truncate">YouTube</div>
                                 {(item as any).channel_name && (
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {(item as any).channel_name}
-                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">{(item as any).channel_name}</div>
                                 )}
                               </div>
                               <ExternalLink className="w-4 h-4 flex-shrink-0" />
@@ -193,39 +151,23 @@ export default function Watchlist() {
                           <h4 className="font-semibold text-sm">Available on:</h4>
                           <div className="flex flex-col gap-2">
                             {(() => {
-                              // Group streaming sources by service name
-                              const groupedSources = item.streaming_sources.reduce((acc: any, source: any) => {
-                                if (!acc[source.name]) {
-                                  acc[source.name] = {
-                                    name: source.name,
-                                    url: source.url, // Use the first URL found
-                                    types: []
-                                  };
-                                }
-                                if (!acc[source.name].types.find((t: any) => t.type === source.type)) {
-                                  acc[source.name].types.push({
-                                    type: source.type,
-                                    price: source.price
-                                  });
+                              const grouped = item.streaming_sources.reduce((acc: any, s: any) => {
+                                if (!acc[s.name]) acc[s.name] = { name: s.name, url: s.url, types: [] };
+                                if (!acc[s.name].types.find((t: any) => t.type === s.type)) {
+                                  acc[s.name].types.push({ type: s.type, price: s.price });
                                 }
                                 return acc;
                               }, {});
-
-                              return Object.values(groupedSources).slice(0, 4).map((service: any, index: number) => {
-                                console.log(`Watchlist - ${service.name}: ${service.url}`);
-                                return (
-                                  <Button
-                                    key={index}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-auto p-2 justify-start"
-                                    onClick={() => {
-                                      console.log(`Opening ${service.name} link: ${service.url}`);
-                                      window.open(service.url, '_blank');
-                                    }}
-                                  >
+                              return Object.values(grouped).slice(0, 4).map((service: any, index: number) => (
+                                <Button
+                                  key={index}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-auto p-2 justify-start"
+                                  onClick={() => window.open(service.url, '_blank')}
+                                >
                                   <div className="flex items-center gap-2 w-full">
-                                    <StreamingIcon 
+                                    <StreamingIcon
                                       serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
                                       serviceName={service.name}
                                       className="w-5 h-5 flex-shrink-0"
@@ -236,39 +178,22 @@ export default function Watchlist() {
                                     <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                   </div>
                                 </Button>
-                                );
-                              });
+                              ));
                             })()}
                           </div>
                         </>
-                      ) : (
-                        <div className="text-center py-4 border border-dashed rounded-lg">
-                          <p className="text-sm text-muted-foreground mb-1">No streaming sources found</p>
-                          <p className="text-sm text-muted-foreground">
-                            Release Date: {item.year}
-                          </p>
-                        </div>
-                      )}
+                      ) : null}
                     </div>
 
-                    {/* Mobile quick actions */}
-                    <div className="flex gap-2 sm:hidden">
+                    {/* Actions */}
+                    <div className="flex gap-2">
                       <Button
-                        onClick={() => setFavorite(item.title, item.year, !item.favorite)}
-                        variant="outline"
-                        size="sm"
-                        className={`flex-1 h-8 text-xs ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''}`}
-                      >
-                        <Star className={`w-4 h-4 mr-1 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                        {item.favorite ? 'Unfavorite' : 'Favorite'}
-                      </Button>
-                      <Button
-                        onClick={() => markAsWatched(item.title, item.year)}
+                        onClick={() => setFavorite(item.title, item.year, false)}
                         variant="outline"
                         size="sm"
                         className="flex-1 h-8 text-xs"
                       >
-                        <Star className="w-4 h-4 mr-1" /> Watched
+                        <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" /> Unfavorite
                       </Button>
                       <Button
                         onClick={() => removeFromWatchlist(item.title, item.year)}
@@ -279,45 +204,6 @@ export default function Watchlist() {
                         <Trash2 className="w-4 h-4 mr-1" /> Remove
                       </Button>
                     </div>
-
-                    {/* Favorite button */}
-                    <Button
-                      onClick={() => setFavorite(item.title, item.year, !item.favorite)}
-                      variant="outline"
-                      size="sm"
-                      className={`hidden sm:block w-full ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''} h-10 sm:h-9 mb-2`}
-                    >
-                      <Star className={`w-4 h-4 mr-2 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                      {item.favorite ? 'Unfavorite' : 'Favorite'}
-                    </Button>
-
-                    {/* Mark as Watched button */}
-                    <Button
-                      onClick={() => markAsWatched(item.title, item.year)}
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:block w-full text-green-500 hover:text-green-600 hover:bg-green-50 h-10 sm:h-9 mb-2"
-                    >
-                      <Star className="w-4 h-4 mr-2" />
-                      Mark as Watched
-                    </Button>
-
-                    {/* Remove button */}
-                    <Button
-                      onClick={() => removeFromWatchlist(item.title, item.year)}
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:block w-full text-red-500 hover:text-red-600 hover:bg-red-50 h-10 sm:h-9"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Remove from Watchlist
-                    </Button>
-
-                    {item.confidence && (
-                      <div className="text-xs text-muted-foreground pt-2 border-t">
-                        Confidence: {Math.round(item.confidence * 100)}%
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>

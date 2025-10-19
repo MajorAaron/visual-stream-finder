@@ -33,6 +33,7 @@ const typeColors = {
 
 export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) => {
   const [savedItems, setSavedItems] = useState<Set<string>>(new Set());
+  const [favoriteItems, setFavoriteItems] = useState<Set<string>>(new Set());
   
   const getYouTubeVideoId = (url?: string): string | null => {
     if (!url) return null;
@@ -69,26 +70,25 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
     });
   }, [results]);
 
-  // Check which items are already in watchlist
+  // Check which items are already in watchlist and/or favorited
   useEffect(() => {
-    // Only check if we have results and they haven't been checked yet
-    if (sortedResults.length === 0 || savedItems.size > 0) {
-      return;
-    }
-    
-    const checkSavedItems = async () => {
+    if (sortedResults.length === 0) return;
+
+    const checkStatuses = async () => {
       const saved = new Set<string>();
+      const fav = new Set<string>();
       for (const item of sortedResults) {
-        const isInWatchlist = await WatchlistService.isInWatchlist(item.title, item.year);
-        if (isInWatchlist) {
-          saved.add(`${item.title}-${item.year}`);
-        }
+        const key = `${item.title}-${item.year}`;
+        const status = await WatchlistService.getItemStatus(item.title, item.year);
+        if (status.exists) saved.add(key);
+        if (status.favorite) fav.add(key);
       }
       setSavedItems(saved);
+      setFavoriteItems(fav);
     };
-    
-    checkSavedItems();
-  }, [sortedResults, savedItems.size]); // Only depend on results and whether we've already checked
+
+    checkStatuses();
+  }, [sortedResults]);
 
   const handleSaveToWatchlist = async (item: DetectedContent) => {
     const key = `${item.title}-${item.year}`;
@@ -116,6 +116,35 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
       } else {
         console.error('Failed to add to watchlist:', error);
       }
+    }
+  };
+
+  const handleToggleFavorite = async (item: DetectedContent) => {
+    const key = `${item.title}-${item.year}`;
+    const isFav = favoriteItems.has(key);
+    const isSaved = savedItems.has(key);
+
+    // Ensure item exists in watchlist before toggling favorite
+    if (!isSaved) {
+      const { success, error } = await WatchlistService.addToWatchlist(item);
+      if (success) {
+        setSavedItems(prev => new Set(prev).add(key));
+      } else {
+        console.error('Failed to add to watchlist before favoriting:', error);
+        return;
+      }
+    }
+
+    const { success, error } = await WatchlistService.setFavorite(item.title, item.year, !isFav);
+    if (success) {
+      setFavoriteItems(prev => {
+        const newSet = new Set(prev);
+        if (isFav) newSet.delete(key); else newSet.add(key);
+        return newSet;
+      });
+      console.log(`${item.title} has been ${isFav ? 'removed from' : 'added to'} favorites.`);
+    } else {
+      console.error('Failed to update favorite:', error);
     }
   };
   return (
@@ -168,7 +197,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                   </div>
                 </div>
 
-                {/* Save to Watchlist Button */}
+                {/* Save & Favorite Buttons */}
                 <div className="flex gap-2">
                   <Button
                     onClick={() => handleSaveToWatchlist(content)}
@@ -187,6 +216,16 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                         <span>Save</span>
                       </>
                     )}
+                  </Button>
+
+                  <Button
+                    onClick={() => handleToggleFavorite(content)}
+                    variant={favoriteItems.has(`${content.title}-${content.year}`) ? "default" : "outline"}
+                    size="sm"
+                    className="flex items-center gap-1.5 px-2.5 py-1 h-auto text-xs sm:text-sm"
+                  >
+                    <Star className={`w-3.5 h-3.5 ${favoriteItems.has(`${content.title}-${content.year}`) ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                    <span>{favoriteItems.has(`${content.title}-${content.year}`) ? 'Favorited' : 'Favorite'}</span>
                   </Button>
                 </div>
 

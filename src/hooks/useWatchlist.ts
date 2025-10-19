@@ -4,6 +4,7 @@ import { DetectedContent } from '@/utils/aiAnalysis';
 
 export const useWatchlist = () => {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [favorites, setFavorites] = useState<WatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const hasFetchedRef = useRef(false);
 
@@ -14,10 +15,12 @@ export const useWatchlist = () => {
     
     const fetchData = async () => {
       try {
-        const { data, error } = await WatchlistService.getWatchlist();
-        if (!error && data) {
-          setWatchlist(data);
-        }
+        const [watchlistRes, favoritesRes] = await Promise.all([
+          WatchlistService.getWatchlist(),
+          WatchlistService.getFavorites(),
+        ]);
+        if (!watchlistRes.error && watchlistRes.data) setWatchlist(watchlistRes.data);
+        if (!favoritesRes.error && favoritesRes.data) setFavorites(favoritesRes.data);
       } catch (err) {
         console.error('Error fetching watchlist:', err);
       } finally {
@@ -33,8 +36,12 @@ export const useWatchlist = () => {
     if (success) {
       console.log(`${content.title} has been saved to your watchlist.`);
       // Manually refresh
-      const { data } = await WatchlistService.getWatchlist();
-      if (data) setWatchlist(data);
+      const [watchlistRes, favoritesRes] = await Promise.all([
+        WatchlistService.getWatchlist(),
+        WatchlistService.getFavorites(),
+      ]);
+      if (watchlistRes.data) setWatchlist(watchlistRes.data);
+      if (favoritesRes.data) setFavorites(favoritesRes.data);
     } else {
       console.error('Failed to add to watchlist:', error);
     }
@@ -45,8 +52,12 @@ export const useWatchlist = () => {
     if (success) {
       console.log(`${title} has been removed from your watchlist.`);
       // Manually refresh
-      const { data } = await WatchlistService.getWatchlist();
-      if (data) setWatchlist(data);
+      const [watchlistRes, favoritesRes] = await Promise.all([
+        WatchlistService.getWatchlist(),
+        WatchlistService.getFavorites(),
+      ]);
+      if (watchlistRes.data) setWatchlist(watchlistRes.data);
+      if (favoritesRes.data) setFavorites(favoritesRes.data);
     } else {
       console.error('Failed to remove from watchlist:', error);
     }
@@ -57,8 +68,12 @@ export const useWatchlist = () => {
     if (success) {
       console.log(`${title} has been marked as watched.`);
       // Manually refresh
-      const { data } = await WatchlistService.getWatchlist();
-      if (data) setWatchlist(data);
+      const [watchlistRes, favoritesRes] = await Promise.all([
+        WatchlistService.getWatchlist(),
+        WatchlistService.getFavorites(),
+      ]);
+      if (watchlistRes.data) setWatchlist(watchlistRes.data);
+      if (favoritesRes.data) setFavorites(favoritesRes.data);
     } else {
       console.error('Failed to mark as watched:', error);
     }
@@ -68,16 +83,36 @@ export const useWatchlist = () => {
     return await WatchlistService.isInWatchlist(title, year);
   };
 
+  const setFavorite = async (title: string, year: number, favorite: boolean) => {
+    const { success, error } = await WatchlistService.setFavorite(title, year, favorite);
+    if (success) {
+      const [watchlistRes, favoritesRes] = await Promise.all([
+        WatchlistService.getWatchlist(),
+        WatchlistService.getFavorites(),
+      ]);
+      if (watchlistRes.data) setWatchlist(watchlistRes.data);
+      if (favoritesRes.data) setFavorites(favoritesRes.data);
+    } else {
+      console.error('Failed to update favorite:', error);
+    }
+  };
+
   return {
     watchlist,
+    favorites,
     loading,
     addToWatchlist,
     removeFromWatchlist,
     markAsWatched,
     isInWatchlist,
+    setFavorite,
     refreshWatchlist: async () => {
-      const { data } = await WatchlistService.getWatchlist();
-      if (data) setWatchlist(data);
+      const [watchlistRes, favoritesRes] = await Promise.all([
+        WatchlistService.getWatchlist(),
+        WatchlistService.getFavorites(),
+      ]);
+      if (watchlistRes.data) setWatchlist(watchlistRes.data);
+      if (favoritesRes.data) setFavorites(favoritesRes.data);
     },
   };
 };
