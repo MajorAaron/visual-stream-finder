@@ -152,10 +152,52 @@ search_cache (NEW - Cost Optimization)
 
 ## Testing & Validation
 
-No test framework is currently configured. To verify changes:
+### Search Functionality Tests
+
+Automated tests are available for the unified-search edge function. The test suite validates various query types including IMDb URLs, titles, descriptions, and partial matches.
+
+**Run tests:**
+
+```bash
+# Test against production (default)
+npm run test:search
+
+# Test against local Supabase
+npm run test:search:local
+
+# Explicitly test production
+npm run test:search:prod
+
+# Or run directly with node
+node scripts/test-search-functionality.js [local|production]
+```
+
+**Before running local tests:**
+1. Start local Supabase: `npx supabase start`
+2. Serve edge functions: `npx supabase functions serve --env-file supabase/functions/.env`
+
+**Test Coverage:**
+- IMDb URLs (with/without protocol, trailing slashes)
+- Simple titles (movies and TV shows)
+- Titles with years
+- Plot descriptions
+- Partial/misspelled titles
+- International films
+- Recent releases
+
+The test script (`scripts/test-search-functionality.js`) includes ~20 test cases and provides:
+- Per-test validation (title and year matching)
+- Success/failure reporting
+- Performance metrics (duration per test)
+- Summary statistics (pass rate, average duration)
+
+### General Validation
+
+To verify changes:
 1. Run `npm run lint` to check for ESLint errors
 2. Run `npm run build` to ensure TypeScript compilation succeeds
 3. Test functionality in development with `npm run dev`
+4. Run search tests with `npm run test:search` to validate search functionality
 
 ## Environment Variables
 
@@ -217,7 +259,7 @@ HashRouter is used for client-side routing compatibility with GitHub Pages.
 - **Local emails**: All test emails go to Inbucket at http://127.0.0.1:54324
 - **No OAuth locally**: Google/GitHub login only works in production
 - **Dev server port**: Runs on 8080, not the default 5173
-- **No automated tests**: Manual testing workflow required
+- **Search tests**: Use `npm run test:search` to run automated search functionality tests (see Testing & Validation section)
 - **Path aliasing**: Use `@/` to import from src directory
 - **HashRouter**: Required for GitHub Pages - all internal navigation uses hash-based routing
 

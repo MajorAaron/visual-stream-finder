@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test:search": "node scripts/test-search-functionality.js",
+    "test:search:local": "node scripts/test-search-functionality.js local",
+    "test:search:prod": "node scripts/test-search-functionality.js production"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
