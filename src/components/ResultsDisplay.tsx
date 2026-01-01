@@ -248,6 +248,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
                           <StreamingIcon
                             serviceId={source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
                             serviceName={source.name}
+                            fallbackUrl={source.logo}
                             className="w-7 h-7 sm:w-8 sm:h-8"
                           />
                         </a>

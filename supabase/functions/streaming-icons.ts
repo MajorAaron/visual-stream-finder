@@ -1,6 +1,6 @@
 /**
  * Streaming Service Icon Mapping for Edge Functions
- * This provides absolute URLs for the streaming service icons
+ * Uses Simple Icons CDN for reliable, free brand logos with local fallbacks
  */
 
 export interface StreamingServiceIcon {
@@ -11,21 +11,34 @@ export interface StreamingServiceIcon {
   primaryColor?: string;
 }
 
-// Production URL - this should match your deployed app URL
-const APP_URL = 'https://mrkcgfsbdcukufgwvjap.supabase.co';
-
-// Helper to get full icon URL
-const getIconUrl = (filename: string): string => {
-  if (!filename) return '';
-  // Return the full URL that will be accessible from the client
-  return `${APP_URL}/storage/v1/object/public/icons/${filename}`;
+// Simple Icons CDN - Free, reliable, 3000+ brand logos
+// Format: https://cdn.simpleicons.org/[brandname]/[hexcolor]
+const getSimpleIconUrl = (brandName: string, color?: string): string => {
+  const baseUrl = `https://cdn.simpleicons.org/${brandName}`;
+  return color ? `${baseUrl}/${color.replace('#', '')}` : baseUrl;
 };
 
-// For now, we'll use a simpler approach - return relative URLs that the frontend will handle
-// The frontend will serve these from /public/icons/
+// Fallback to local icons for services we have hosted
 const getPublicIconUrl = (filename: string): string => {
   if (!filename) return '';
   return `/icons/${filename}`;
+};
+
+// Multi-layer logo resolution: Simple Icons CDN → Local → Favicon
+const getLogo = (simpleIconName: string, localFile?: string, fallbackDomain?: string): string => {
+  // Primary: Simple Icons CDN (most reliable)
+  if (simpleIconName) {
+    return getSimpleIconUrl(simpleIconName);
+  }
+  // Secondary: Local file
+  if (localFile) {
+    return getPublicIconUrl(localFile);
+  }
+  // Tertiary: Service favicon
+  if (fallbackDomain) {
+    return `https://www.${fallbackDomain}/favicon.ico`;
+  }
+  return '';
 };
 
 export const streamingServiceIcons: Record<string, StreamingServiceIcon> = {
@@ -33,208 +46,233 @@ export const streamingServiceIcons: Record<string, StreamingServiceIcon> = {
   netflix: {
     name: 'Netflix',
     id: 'netflix',
-    logo: getPublicIconUrl('netflix.png'),
-    logoType: 'png',
+    logo: getLogo('netflix', 'netflix.png', 'netflix.com'),
+    logoType: 'svg',
     primaryColor: '#E50914'
   },
-  
+
   // Amazon Prime Video
   prime: {
-    name: 'Amazon Prime Video',
+    name: 'Prime Video',
     id: 'prime',
-    logo: getPublicIconUrl('amazonprime.png'),
-    logoType: 'png',
+    logo: getLogo('amazonprimevideo', 'amazonprime.png', 'primevideo.com'),
+    logoType: 'svg',
     primaryColor: '#00A8E1'
   },
   amazon: {
-    name: 'Amazon Prime Video',
+    name: 'Prime Video',
     id: 'amazon',
-    logo: getPublicIconUrl('amazonprime.png'),
-    logoType: 'png',
+    logo: getLogo('amazonprimevideo', 'amazonprime.png', 'primevideo.com'),
+    logoType: 'svg',
     primaryColor: '#00A8E1'
   },
   amazonprime: {
-    name: 'Amazon Prime Video',
+    name: 'Prime Video',
     id: 'amazonprime',
-    logo: getPublicIconUrl('amazonprime.png'),
-    logoType: 'png',
+    logo: getLogo('amazonprimevideo', 'amazonprime.png', 'primevideo.com'),
+    logoType: 'svg',
     primaryColor: '#00A8E1'
   },
-  
+
   // Disney+
   disney: {
     name: 'Disney+',
     id: 'disney',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('disneyplus', '', 'disneyplus.com'),
+    logoType: 'svg',
     primaryColor: '#113CCF'
   },
   disneyplus: {
     name: 'Disney+',
     id: 'disneyplus',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('disneyplus', '', 'disneyplus.com'),
+    logoType: 'svg',
     primaryColor: '#113CCF'
   },
-  
+
   // HBO Max / Max
   hbo: {
     name: 'Max',
     id: 'hbo',
-    logo: getPublicIconUrl('hbomax.jpg'),
-    logoType: 'jpg',
+    logo: getLogo('hbo', 'hbomax.jpg', 'max.com'),
+    logoType: 'svg',
     primaryColor: '#002BE7'
   },
   hbomax: {
     name: 'Max',
     id: 'hbomax',
-    logo: getPublicIconUrl('hbomax.jpg'),
-    logoType: 'jpg',
+    logo: getLogo('hbomax', 'hbomax.jpg', 'max.com'),
+    logoType: 'svg',
     primaryColor: '#002BE7'
   },
   max: {
     name: 'Max',
     id: 'max',
-    logo: getPublicIconUrl('hbomax.jpg'),
-    logoType: 'jpg',
+    logo: getLogo('max', 'hbomax.jpg', 'max.com'),
+    logoType: 'svg',
     primaryColor: '#002BE7'
   },
-  
+
   // Hulu
   hulu: {
     name: 'Hulu',
     id: 'hulu',
-    logo: getPublicIconUrl('hulu.jpg'),
-    logoType: 'jpg',
+    logo: getLogo('hulu', 'hulu.jpg', 'hulu.com'),
+    logoType: 'svg',
     primaryColor: '#1CE783'
   },
-  
+
   // Apple TV+
   apple: {
     name: 'Apple TV+',
     id: 'apple',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('appletvplus', '', 'tv.apple.com'),
+    logoType: 'svg',
     primaryColor: '#000000'
   },
   appletv: {
     name: 'Apple TV+',
     id: 'appletv',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('appletvplus', '', 'tv.apple.com'),
+    logoType: 'svg',
     primaryColor: '#000000'
   },
   appletvplus: {
     name: 'Apple TV+',
     id: 'appletvplus',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('appletvplus', '', 'tv.apple.com'),
+    logoType: 'svg',
     primaryColor: '#000000'
   },
-  
+
   // Paramount+
   paramount: {
     name: 'Paramount+',
     id: 'paramount',
-    logo: getPublicIconUrl('paramountplus.jpg'),
-    logoType: 'jpg',
+    logo: getLogo('paramountplus', 'paramountplus.jpg', 'paramountplus.com'),
+    logoType: 'svg',
     primaryColor: '#0064FF'
   },
   paramountplus: {
     name: 'Paramount+',
     id: 'paramountplus',
-    logo: getPublicIconUrl('paramountplus.jpg'),
-    logoType: 'jpg',
+    logo: getLogo('paramountplus', 'paramountplus.jpg', 'paramountplus.com'),
+    logoType: 'svg',
     primaryColor: '#0064FF'
   },
-  
+
   // Peacock
   peacock: {
     name: 'Peacock',
     id: 'peacock',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('peacock', '', 'peacocktv.com'),
+    logoType: 'svg',
     primaryColor: '#000000'
   },
-  
+
   // YouTube
   youtube: {
     name: 'YouTube',
     id: 'youtube',
-    logo: getPublicIconUrl('youtube.png'),
-    logoType: 'png',
+    logo: getLogo('youtube', 'youtube.png', 'youtube.com'),
+    logoType: 'svg',
     primaryColor: '#FF0000'
   },
   youtubetv: {
     name: 'YouTube TV',
     id: 'youtubetv',
-    logo: getPublicIconUrl('youtube.png'),
-    logoType: 'png',
+    logo: getLogo('youtube', 'youtube.png', 'youtube.com'),
+    logoType: 'svg',
     primaryColor: '#FF0000'
   },
-  
+
+  // Aggregator Services (NEW)
+  justwatch: {
+    name: 'JustWatch',
+    id: 'justwatch',
+    logo: getLogo('justwatch', '', 'justwatch.com'),
+    logoType: 'svg',
+    primaryColor: '#000000'
+  },
+
+  reelgood: {
+    name: 'Reelgood',
+    id: 'reelgood',
+    logo: 'https://www.reelgood.com/favicon.ico', // Not in Simple Icons
+    logoType: 'ico',
+    primaryColor: '#000000'
+  },
+
+  google: {
+    name: 'Google Search',
+    id: 'google',
+    logo: getLogo('google', '', 'google.com'),
+    logoType: 'svg',
+    primaryColor: '#4285F4'
+  },
+
   // Additional services
   showtime: {
     name: 'Showtime',
     id: 'showtime',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('showtime', '', 'showtime.com'),
+    logoType: 'svg',
     primaryColor: '#FF0000'
   },
-  
+
   starz: {
     name: 'Starz',
     id: 'starz',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('starz', '', 'starz.com'),
+    logoType: 'svg',
     primaryColor: '#000000'
   },
-  
+
   crunchyroll: {
     name: 'Crunchyroll',
     id: 'crunchyroll',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('crunchyroll', '', 'crunchyroll.com'),
+    logoType: 'svg',
     primaryColor: '#F47521'
   },
-  
+
   tubi: {
     name: 'Tubi',
     id: 'tubi',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('tubi', '', 'tubi.tv'),
+    logoType: 'svg',
     primaryColor: '#FA382F'
   },
-  
+
   vudu: {
     name: 'Vudu',
     id: 'vudu',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('vudu', '', 'vudu.com'),
+    logoType: 'svg',
     primaryColor: '#3399FF'
   },
-  
+
   googleplay: {
     name: 'Google Play',
     id: 'googleplay',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('googleplay', '', 'play.google.com'),
+    logoType: 'svg',
     primaryColor: '#414141'
   },
-  
+
   microsoft: {
     name: 'Microsoft Store',
     id: 'microsoft',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('microsoft', '', 'microsoft.com'),
+    logoType: 'svg',
     primaryColor: '#0078D4'
   },
-  
+
   itunes: {
     name: 'iTunes',
     id: 'itunes',
-    logo: '',
-    logoType: 'png',
+    logo: getLogo('itunes', '', 'apple.com'),
+    logoType: 'svg',
     primaryColor: '#000000'
   }
 };

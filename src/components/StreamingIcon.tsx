@@ -8,23 +8,23 @@ interface StreamingIconProps {
   fallbackUrl?: string;
 }
 
-export const StreamingIcon: React.FC<StreamingIconProps> = ({ 
-  serviceId, 
+export const StreamingIcon: React.FC<StreamingIconProps> = ({
+  serviceId,
   serviceName,
   className = "w-8 h-8",
   fallbackUrl
 }) => {
   const [error, setError] = useState(false);
-  
+
   // Normalize the service name for lookup
-  const normalizedServiceId = serviceName ? 
-    serviceName.toLowerCase().replace(/[^a-z0-9]/g, '') : 
+  const normalizedServiceId = serviceName ?
+    serviceName.toLowerCase().replace(/[^a-z0-9]/g, '') :
     serviceId.toLowerCase().replace(/[^a-z0-9]/g, '');
-  
+
   const icon = getStreamingServiceIcon(normalizedServiceId);
-  
-  // Use the icon from our mapping, or fallback to provided URL
-  const logoUrl = !error && icon.logo ? icon.logo : (fallbackUrl || '');
+
+  // PRIORITY: Use the logo URL from the API (SuperTinyIcons) if provided, otherwise use local icons
+  const logoUrl = !error && fallbackUrl ? fallbackUrl : (icon.logo || '');
   const displayName = icon.name || serviceName || serviceId;
   
   // Services that need white background for visibility

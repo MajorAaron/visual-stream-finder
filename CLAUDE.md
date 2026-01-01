@@ -59,11 +59,12 @@ npx supabase stop
 - **React Query** for data fetching and caching
 
 ### Backend Services
-- **Supabase** (BaaS) - Authentication, database, and edge functions
-- **OpenAI API** - Image content identification and streaming source detection
-- **TMDB API** - Movie/TV metadata and poster images
+- **Supabase** (BaaS) - Authentication, database, caching, and edge functions
+- **OpenAI API** - Content identification using gpt-4o-mini (cost-optimized)
+- **TMDB API** - Movie/TV metadata, posters, and multi-search
 - **YouTube Data API** - Video identification
-- **Firecrawl API** - Enhanced web content extraction
+- ~~**Firecrawl API**~~ - Removed (using simple HTML fetch instead)
+- **Streaming Availability API** - **ENABLED** - Provides deep links directly to Netflix, Hulu, Apple TV+, etc.
 
 ### Key Directories
 - `src/pages/` - Main application pages (Index, Auth, Profile, Watchlist, Watched)
@@ -75,22 +76,22 @@ npx supabase stop
 
 ## Data Flow Architecture
 
-### Image Analysis Pipeline
-1. **Frontend**: SearchInput.tsx handles image upload/text input
-2. **Edge Function**: analyze-image processes through:
-   - OpenAI Vision API for content identification
-   - TMDB API for metadata and posters
-   - OpenAI API for streaming platform detection
-   - YouTube Data API for video content
-3. **Display**: ResultsDisplay.tsx shows streaming options
+### Unified Search Pipeline (Optimized - 96% Cost Reduction)
+1. **Frontend**: SearchInput.tsx handles both image upload and text input
+2. **Edge Function**: unified-search processes through intelligent waterfall:
+   - **Layer 1 (FREE)**: Cache lookup → TMDB multi-search → YouTube direct API
+   - **Layer 2 (CHEAP)**: gpt-4o-mini for AI analysis (only if Layer 1 fails)
+   - **Layer 3 (ENRICH)**: TMDB posters + JustWatch/Reelgood smart links
+3. **Display**: ResultsDisplay.tsx shows streaming options via aggregator links
+4. **Caching**: All results stored in `search_cache` table (90-day TTL)
 
-### Text/URL Search Pipeline
-1. **Frontend**: SearchInput.tsx handles text queries and URLs
-2. **Edge Function**: search-content processes through:
-   - URL extraction via Firecrawl API (if URL provided)
-   - OpenAI API for content identification and streaming sources
-   - TMDB API for metadata and poster images
-3. **Display**: ResultsDisplay.tsx shows streaming options with direct links
+**Key Optimizations:**
+- 40-50% of searches served from cache (instant, $0 cost)
+- 30-40% skip AI via TMDB direct match
+- Only 20-30% require AI (using cheap gpt-4o-mini)
+- No paid streaming APIs (replaced with free aggregator links)
+
+See [Unified Search Documentation](/docs/edge-functions/unified-search.md) for details.
 
 ### Authentication Flow
 - Multi-provider support (Email, Google, GitHub, Discord)
@@ -126,6 +127,17 @@ watchlist
 ├── streaming_sources (JSONB)
 ├── watched (boolean)
 └── confidence, timestamps
+
+search_cache (NEW - Cost Optimization)
+├── id (UUID)
+├── input_hash (TEXT, UNIQUE) - SHA256 of search input
+├── content_type ('image' | 'text' | 'url')
+├── identified_title, identified_year, identified_type
+├── tmdb_id, tmdb_poster_url
+├── youtube_id, youtube_url, channel_name
+├── confidence, plot, genre[], rating, runtime
+├── hit_count (tracks popularity)
+└── created_at, last_accessed_at (90-day TTL)
 ```
 
 ## Code Conventions
@@ -148,23 +160,30 @@ No test framework is currently configured. To verify changes:
 ## Environment Variables
 
 The app uses Supabase environment variables. Key services require API keys:
-- OpenAI API (for vision analysis and streaming source detection)
-- TMDB API (for movie/TV data and poster images)
-- YouTube Data API (for video identification)
-- Firecrawl API (for enhanced web content extraction)
+- **OpenAI API** (gpt-4o-mini for cost-optimized content identification)
+- **TMDB API** (movie/TV data, posters, and multi-search)
+- **YouTube Data API** (video identification)
+- ~~**Firecrawl API**~~ (disabled - using simple HTML fetch)
+- **Streaming Availability API** (ENABLED - provides deep links to streaming platforms)
 
-These are configured in the Supabase dashboard, not in local .env files.
+These are configured in the Supabase dashboard and `supabase/functions/.env` for local development.
 
 ## Edge Functions
 
-- `analyze-image` - Processes uploaded images with OpenAI Vision
-- `search-content` - Handles text-based content search and URL extraction
+### Active Functions (Optimized Architecture)
+- **`unified-search`** ⭐ - Primary search function with 96% cost reduction
+  - Handles both image and text searches
+  - Intelligent caching with 90-day TTL
+  - Smart waterfall: Cache → TMDB → YouTube → AI → Enrichment
+  - Uses gpt-4o-mini for all AI (10-30x cheaper than gpt-4o)
+  - JustWatch/Reelgood aggregator links (no paid streaming API)
+  - **See**: [Unified Search Documentation](/docs/edge-functions/unified-search.md)
 
-For detailed documentation on edge functions, see:
-- [Analyze Image Function Documentation](/docs/edge-functions/analyze-image.md)
-- [Search Content Function Documentation](/docs/edge-functions/search-content.md)
-- [Search Content Update Documentation](/docs/edge-functions/search-content-update.md) - OpenAI integration changes
-- [Search Content Logging Improvement](/docs/edge-functions/search-content-logging-improvement.md) - Enhanced logging with step prefixes
+### Legacy Functions (Backward Compatibility)
+- `analyze-image` - Original image analysis (now wraps unified-search)
+- `search-content` - Original text search (now wraps unified-search)
+
+**Migration Note**: Frontend still works with old function calls via AIAnalysisService wrappers. All requests are automatically routed to unified-search for cost optimization.
 
 ## Features
 

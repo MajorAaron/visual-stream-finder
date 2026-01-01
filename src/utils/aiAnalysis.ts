@@ -83,72 +83,73 @@ const mockResults: DetectedContent[] = [
 ];
 
 export class AIAnalysisService {
-  static async analyzeImage(file: File): Promise<DetectedContent[]> {
+  /**
+   * NEW: Unified search method using the optimized unified-search edge function
+   * This method handles both image and text searches with intelligent caching and cost optimization
+   */
+  static async unifiedSearch(input: File | string): Promise<DetectedContent[]> {
     try {
-      // Convert file to base64 and extract MIME type
-      const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Extract MIME type and base64 data
-          const [dataPrefix, base64String] = result.split(',');
-          const mimeType = dataPrefix.match(/:(.*?);/)?.[1] || 'image/jpeg';
-          resolve({ base64: base64String, mimeType });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      let body: any;
 
-      // Call the edge function
-      const { data, error } = await supabase.functions.invoke('analyze-image', {
-        body: { imageBase64: base64, mimeType }
+      if (input instanceof File) {
+        // Handle image upload
+        const { base64, mimeType } = await new Promise<{ base64: string; mimeType: string }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            const [dataPrefix, base64String] = result.split(',');
+            const mimeType = dataPrefix.match(/:(.*?);/)?.[1] || 'image/jpeg';
+            resolve({ base64: base64String, mimeType });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(input);
+        });
+
+        body = { imageBase64: base64, mimeType };
+      } else {
+        // Handle text search
+        body = { query: input };
+      }
+
+      // Call the new unified-search edge function
+      const { data, error } = await supabase.functions.invoke('unified-search', {
+        body
       });
 
       if (error) {
-        console.error('Edge function error:', error);
-        toast.error('Failed to analyze image. Please try again.');
-        throw error;
-      }
-
-      if (data.error) {
-        console.error('AI analysis error:', data.error);
-        toast.error('Failed to analyze image. Please try again.');
-        throw new Error(data.error);
-      }
-
-      return data.results || [];
-    } catch (error) {
-      console.error('Analysis failed:', error);
-      toast.error('Failed to analyze image. Please try again.');
-      throw error;
-    }
-  }
-
-  static async searchByText(query: string): Promise<DetectedContent[]> {
-    try {
-      // Call the new search-content edge function
-      const { data, error } = await supabase.functions.invoke('search-content', {
-        body: { query }
-      });
-
-      if (error) {
-        console.error('Edge function error:', error);
-        toast.error('Failed to search content. Please try again.');
+        console.error('Unified search error:', error);
+        toast.error('Search failed. Please try again.');
         throw error;
       }
 
       if (data.error) {
         console.error('Search error:', data.error);
-        toast.error('Failed to search content. Please try again.');
+        toast.error('Search failed. Please try again.');
         throw new Error(data.error);
       }
 
       return data.results || [];
     } catch (error) {
-      console.error('Search failed:', error);
-      toast.error('Failed to search content. Please try again.');
+      console.error('Unified search failed:', error);
+      toast.error('Search failed. Please try again.');
       throw error;
     }
+  }
+
+  /**
+   * LEGACY: Image analysis - now uses unified search internally
+   * Kept for backward compatibility
+   */
+  static async analyzeImage(file: File): Promise<DetectedContent[]> {
+    return AIAnalysisService.unifiedSearch(file);
+  }
+
+  /**
+   * LEGACY: Text search - now uses unified search internally
+   * Kept for backward compatibility
+   */
+  static async searchByText(query: string): Promise<DetectedContent[]> {
+    return AIAnalysisService.unifiedSearch(query);
   }
 
   static async getStreamingSources(title: string, year: number): Promise<StreamingSource[]> {
