@@ -110,56 +110,182 @@ export default function Watchlist() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-6">
             {watchlist.map((item) => (
               <Card key={item.id} className="overflow-hidden w-full shadow-lg hover:shadow-xl transition-shadow duration-200">
-                <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
-                  <img
-                    src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
-                    alt={`${item.title} poster`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <CardContent className="p-2 sm:p-4">
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-base sm:text-xl line-clamp-2 mb-2">{item.title}</h3>
-                        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {item.year}
+                {/* Desktop: Horizontal layout */}
+                <div className="hidden lg:flex">
+                  <div className={`flex-shrink-0 w-48 ${item.type === 'youtube' ? 'aspect-video' : ''}`}>
+                    <img
+                      src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
+                      alt={`${item.title} poster`}
+                      className="w-full h-full object-cover"
+                      style={{ minHeight: '288px', maxHeight: '288px' }}
+                    />
+                  </div>
+                  <CardContent className="flex-1 p-6">
+                    <div className="flex h-full">
+                      {/* Left: Main content */}
+                      <div className="flex-1 pr-6">
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div>
+                            <h3 className="font-bold text-2xl mb-2">{item.title}</h3>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                {item.year}
+                              </div>
+                              {item.runtime && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-4 h-4" />
+                                  {item.runtime}
+                                </div>
+                              )}
+                              {item.rating && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                  {item.rating}/10
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          {item.runtime && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {item.runtime}
-                            </div>
-                          )}
-                          {item.rating && (
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                              {item.rating}/10
-                            </div>
-                          )}
+                          <Badge variant="outline" className={`${typeColors[item.type]} flex-shrink-0`}>
+                            {item.type.toUpperCase()}
+                          </Badge>
                         </div>
+
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {item.genre?.map((g) => (
+                            <Badge key={g} variant="secondary" className="text-xs">
+                              {g}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        {item.plot && (
+                          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed mb-4">{item.plot}</p>
+                        )}
+
+                        {/* Streaming sources inline for desktop */}
+                        {item.type !== 'youtube' && item.streaming_sources && item.streaming_sources.length > 0 && (
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-muted-foreground">Available on:</span>
+                            <div className="flex gap-2">
+                              {(() => {
+                                const groupedSources = item.streaming_sources.reduce((acc: any, source: any) => {
+                                  if (!acc[source.name]) {
+                                    acc[source.name] = { name: source.name, url: source.url };
+                                  }
+                                  return acc;
+                                }, {});
+                                return Object.values(groupedSources).slice(0, 5).map((service: any, index: number) => (
+                                  <button
+                                    key={index}
+                                    onClick={() => window.open(service.url, '_blank')}
+                                    className="p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                                    title={service.name}
+                                  >
+                                    <StreamingIcon
+                                      serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
+                                      serviceName={service.name}
+                                      className="w-6 h-6"
+                                    />
+                                  </button>
+                                ));
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <Badge variant="outline" className={`${typeColors[item.type]} flex-shrink-0 text-xs`}>
-                        {item.type.toUpperCase()}
-                      </Badge>
-                    </div>
 
-                    <div className="hidden sm:flex flex-wrap gap-2">
-                      {item.genre?.map((g) => (
-                        <Badge key={g} variant="secondary" className="text-xs">
-                          {g}
+                      {/* Right: Actions */}
+                      <div className="flex flex-col gap-2 w-44 border-l pl-6">
+                        <Button
+                          onClick={() => setFavorite(item.title, item.year, !item.favorite)}
+                          variant="outline"
+                          size="sm"
+                          className={`w-full justify-start ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''}`}
+                        >
+                          <Star className={`w-4 h-4 mr-2 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                          {item.favorite ? 'Unfavorite' : 'Favorite'}
+                        </Button>
+                        <Button
+                          onClick={() => markAsWatched(item.title, item.year)}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-green-500 hover:text-green-600 hover:bg-green-50"
+                        >
+                          <Star className="w-4 h-4 mr-2" />
+                          Watched
+                        </Button>
+                        <Button
+                          onClick={() => removeFromWatchlist(item.title, item.year)}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Remove
+                        </Button>
+                        {item.confidence && (
+                          <div className="text-xs text-muted-foreground pt-2 mt-auto">
+                            Confidence: {Math.round(item.confidence * 100)}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </div>
+
+                {/* Mobile: Vertical layout */}
+                <div className="lg:hidden">
+                  <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
+                    <img
+                      src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
+                      alt={`${item.title} poster`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <CardContent className="p-2 sm:p-4">
+                    <div className="space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-base sm:text-xl line-clamp-2 mb-2">{item.title}</h3>
+                          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {item.year}
+                            </div>
+                            {item.runtime && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                {item.runtime}
+                              </div>
+                            )}
+                            {item.rating && (
+                              <div className="flex items-center gap-1">
+                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                {item.rating}/10
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={`${typeColors[item.type]} flex-shrink-0 text-xs`}>
+                          {item.type.toUpperCase()}
                         </Badge>
-                      ))}
-                    </div>
+                      </div>
 
-                    {item.plot && (
-                      <p className="hidden sm:block text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
-                    )}
+                      <div className="hidden sm:flex flex-wrap gap-2">
+                        {item.genre?.map((g) => (
+                          <Badge key={g} variant="secondary" className="text-xs">
+                            {g}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      {item.plot && (
+                        <p className="hidden sm:block text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
+                      )}
 
                     {/* Streaming Sources / YouTube Link */}
                     <div className="hidden sm:block space-y-3">
@@ -318,8 +444,9 @@ export default function Watchlist() {
                         Confidence: {Math.round(item.confidence * 100)}%
                       </div>
                     )}
-                  </div>
-                </CardContent>
+                    </div>
+                  </CardContent>
+                </div>
               </Card>
             ))}
           </div>
