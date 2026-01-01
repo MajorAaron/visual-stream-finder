@@ -35,23 +35,26 @@ export const useAuth = () => {
   };
 
   const signInWithOAuth = async (provider: 'google' | 'github' | 'discord') => {
-    const redirectUrl = `${window.location.origin}/`;
-    
+    // Use BASE_URL to handle GitHub Pages subpath (/visual-stream-finder/)
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const redirectUrl = `${window.location.origin}${baseUrl}`;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: redirectUrl
       }
     });
-    
+
     if (error) {
       console.error('OAuth sign in error:', error.message);
     }
   };
 
   const signUpWithEmail = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
+    const baseUrl = import.meta.env.BASE_URL || '/';
+    const redirectUrl = `${window.location.origin}${baseUrl}`;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
