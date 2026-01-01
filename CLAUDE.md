@@ -219,3 +219,14 @@ HashRouter is used for client-side routing compatibility with GitHub Pages.
 - **Dev server port**: Runs on 8080, not the default 5173
 - **No automated tests**: Manual testing workflow required
 - **Path aliasing**: Use `@/` to import from src directory
+- **HashRouter**: Required for GitHub Pages - all internal navigation uses hash-based routing
+
+## Required Environment Variables
+
+Create `supabase/functions/.env` for local development:
+```
+OPENAI_API_KEY="your_openai_api_key"
+TMDB_API_KEY="your_tmdb_api_key"
+YOUTUBE_API_KEY="your_youtube_api_key"
+STREAMING_AVAILABILITY_API_KEY="your_streaming_availability_api_key"
+```

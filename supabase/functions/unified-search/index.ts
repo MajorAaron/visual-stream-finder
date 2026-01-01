@@ -249,6 +249,243 @@ function extractYouTubeVideoId(url: string): string | null {
   return null;
 }
 
+// Layer 1: Detect streaming platform URLs
+interface StreamingPlatformInfo {
+  platform: string;
+  url: string;
+}
+
+function detectStreamingPlatformUrl(url: string): StreamingPlatformInfo | null {
+  const lowerUrl = url.toLowerCase();
+
+  // Netflix: netflix.com/title/123 or netflix.com/watch/123
+  if (lowerUrl.includes('netflix.com')) {
+    return { platform: 'Netflix', url };
+  }
+
+  // Hulu: hulu.com/watch/xxx or hulu.com/movie/xxx or hulu.com/series/xxx
+  if (lowerUrl.includes('hulu.com')) {
+    return { platform: 'Hulu', url };
+  }
+
+  // Disney+: disneyplus.com/movies/xxx or disneyplus.com/series/xxx
+  if (lowerUrl.includes('disneyplus.com') || lowerUrl.includes('disney+.com')) {
+    return { platform: 'Disney+', url };
+  }
+
+  // Max (HBO): play.max.com/movie/xxx or play.max.com/show/xxx or max.com
+  if (lowerUrl.includes('max.com') || lowerUrl.includes('hbomax.com')) {
+    return { platform: 'Max', url };
+  }
+
+  // Amazon Prime: primevideo.com or amazon.com/gp/video
+  if (lowerUrl.includes('primevideo.com') || (lowerUrl.includes('amazon.com') && lowerUrl.includes('/video'))) {
+    return { platform: 'Prime Video', url };
+  }
+
+  // Peacock: peacocktv.com
+  if (lowerUrl.includes('peacocktv.com') || lowerUrl.includes('peacock.com')) {
+    return { platform: 'Peacock', url };
+  }
+
+  // Paramount+: paramountplus.com
+  if (lowerUrl.includes('paramountplus.com')) {
+    return { platform: 'Paramount+', url };
+  }
+
+  // Apple TV+: tv.apple.com
+  if (lowerUrl.includes('tv.apple.com')) {
+    return { platform: 'Apple TV+', url };
+  }
+
+  // Crunchyroll: crunchyroll.com
+  if (lowerUrl.includes('crunchyroll.com')) {
+    return { platform: 'Crunchyroll', url };
+  }
+
+  // Tubi: tubitv.com
+  if (lowerUrl.includes('tubitv.com') || lowerUrl.includes('tubi.tv')) {
+    return { platform: 'Tubi', url };
+  }
+
+  // Pluto TV: pluto.tv
+  if (lowerUrl.includes('pluto.tv')) {
+    return { platform: 'Pluto TV', url };
+  }
+
+  return null;
+}
+
+// Layer 1: Extract title from streaming platform page
+async function extractTitleFromStreamingUrl(platformInfo: StreamingPlatformInfo): Promise<string | null> {
+  console.log(`[${platformInfo.platform}] 🔗 Fetching page to extract title...`);
+
+  try {
+    const response = await retryWithBackoff(() =>
+      fetch(platformInfo.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+        redirect: 'follow',
+      })
+    );
+
+    if (!response.ok) {
+      console.log(`[${platformInfo.platform}] ❌ Failed to fetch: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+
+    // Try to extract title from various sources
+    let title: string | null = null;
+
+    // 1. Open Graph title (most reliable)
+    const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:title["']/i);
+    if (ogTitleMatch) {
+      title = ogTitleMatch[1];
+      console.log(`[${platformInfo.platform}] 📄 Found og:title: "${title}"`);
+    }
+
+    // 2. Twitter title
+    if (!title) {
+      const twitterTitleMatch = html.match(/<meta[^>]*name=["']twitter:title["'][^>]*content=["']([^"']+)["']/i) ||
+                                html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:title["']/i);
+      if (twitterTitleMatch) {
+        title = twitterTitleMatch[1];
+        console.log(`[${platformInfo.platform}] 📄 Found twitter:title: "${title}"`);
+      }
+    }
+
+    // 3. Regular title tag
+    if (!title) {
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      if (titleMatch) {
+        title = titleMatch[1];
+        console.log(`[${platformInfo.platform}] 📄 Found <title>: "${title}"`);
+      }
+    }
+
+    if (!title) {
+      console.log(`[${platformInfo.platform}] ⚠️ No title found in page`);
+      return null;
+    }
+
+    // Clean up the title
+    title = cleanStreamingTitle(title, platformInfo.platform);
+
+    if (title) {
+      console.log(`[${platformInfo.platform}] ✅ Extracted title: "${title}"`);
+    }
+
+    return title;
+  } catch (error) {
+    console.log(`[${platformInfo.platform}] ❌ Error fetching page: ${error.message}`);
+    return null;
+  }
+}
+
+// Clean up streaming platform title to get just the movie/show name
+function cleanStreamingTitle(rawTitle: string, platform: string): string | null {
+  let title = rawTitle.trim();
+
+  // Decode HTML entities
+  title = title.replace(/&amp;/g, '&')
+               .replace(/&lt;/g, '<')
+               .replace(/&gt;/g, '>')
+               .replace(/&quot;/g, '"')
+               .replace(/&#39;/g, "'")
+               .replace(/&#x27;/g, "'")
+               .replace(/&nbsp;/g, ' ');
+
+  // Platform-specific cleaning patterns
+  const cleanPatterns: Record<string, RegExp[]> = {
+    'Netflix': [
+      /\s*[-–|]\s*Netflix$/i,
+      /^Watch\s+/i,
+      /\s*\|\s*Netflix$/i,
+    ],
+    'Hulu': [
+      /\s*[-–|]\s*Hulu$/i,
+      /^Watch\s+/i,
+      /\s*on\s+Hulu$/i,
+      /\s*\|\s*Hulu$/i,
+    ],
+    'Disney+': [
+      /\s*[-–|]\s*Disney\+?$/i,
+      /\s*\|\s*Disney\+?$/i,
+      /^Watch\s+/i,
+    ],
+    'Max': [
+      /\s*[-–|]\s*Max$/i,
+      /\s*[-–|]\s*HBO\s*Max$/i,
+      /\s*\|\s*Max$/i,
+      /^Watch\s+/i,
+      /\s*on\s+Max$/i,
+    ],
+    'Prime Video': [
+      /\s*[-–|]\s*Prime\s*Video$/i,
+      /\s*[-–|]\s*Amazon$/i,
+      /\s*\|\s*Prime\s*Video$/i,
+      /^Watch\s+/i,
+    ],
+    'Peacock': [
+      /\s*[-–|]\s*Peacock$/i,
+      /\s*\|\s*Peacock$/i,
+      /^Watch\s+/i,
+    ],
+    'Paramount+': [
+      /\s*[-–|]\s*Paramount\+?$/i,
+      /\s*\|\s*Paramount\+?$/i,
+      /^Watch\s+/i,
+    ],
+    'Apple TV+': [
+      /\s*[-–|]\s*Apple\s*TV\+?$/i,
+      /\s*\|\s*Apple\s*TV\+?$/i,
+      /^Watch\s+/i,
+    ],
+    'Crunchyroll': [
+      /\s*[-–|]\s*Crunchyroll$/i,
+      /\s*\|\s*Crunchyroll$/i,
+      /^Watch\s+/i,
+    ],
+    'Tubi': [
+      /\s*[-–|]\s*Tubi$/i,
+      /\s*\|\s*Tubi$/i,
+      /^Watch\s+/i,
+      /\s*Free\s*Movies?\s*&?\s*TV$/i,
+    ],
+    'Pluto TV': [
+      /\s*[-–|]\s*Pluto\s*TV$/i,
+      /\s*\|\s*Pluto\s*TV$/i,
+      /^Watch\s+/i,
+    ],
+  };
+
+  // Apply platform-specific patterns
+  const patterns = cleanPatterns[platform] || [];
+  for (const pattern of patterns) {
+    title = title.replace(pattern, '');
+  }
+
+  // General cleanup
+  title = title.replace(/\s*\((\d{4})\)\s*$/, ''); // Remove year in parentheses
+  title = title.replace(/\s*-\s*Season\s+\d+.*$/i, ''); // Remove season info
+  title = title.replace(/\s*S\d+\s*E\d+.*$/i, ''); // Remove S01E01 format
+  title = title.replace(/\s*:\s*Episode\s+\d+.*$/i, ''); // Remove episode info
+  title = title.trim();
+
+  // If title is too short or empty, it's probably garbage
+  if (title.length < 2) {
+    return null;
+  }
+
+  return title;
+}
+
 // Layer 1: YouTube Data API
 async function fetchYouTubeMetadata(videoId: string): Promise<ContentResult | null> {
   const apiKey = Deno.env.get('YOUTUBE_API_KEY');
@@ -1133,6 +1370,71 @@ serve(async (req) => {
           return new Response(JSON.stringify({ results }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
+        }
+      }
+    }
+
+    // Streaming platform URL detection (Netflix, Hulu, Disney+, Max, etc.)
+    if (!isImage && input.query && !results.length) {
+      const platformInfo = detectStreamingPlatformUrl(input.query);
+      if (platformInfo) {
+        console.log(`[${platformInfo.platform}] 📺 Streaming platform URL detected`);
+
+        // Extract title from the streaming page
+        const extractedTitle = await extractTitleFromStreamingUrl(platformInfo);
+
+        if (extractedTitle) {
+          console.log(`[${platformInfo.platform}] 🔍 Searching TMDB for: "${extractedTitle}"`);
+
+          // Use the extracted title to search TMDB
+          const tmdbResult = await tmdbMultiSearch(extractedTitle);
+
+          if (tmdbResult && tmdbResult.confidence >= 0.5) {
+            console.log(`[${platformInfo.platform}] ✅ Found match: "${tmdbResult.title}"`);
+
+            // Fetch IMDB ID for fallback link
+            const mediaType = tmdbResult.type === 'tv' ? 'tv' : 'movie';
+            if (tmdbResult.tmdbId) {
+              tmdbResult.imdbId = await fetchIMDBId(tmdbResult.tmdbId, mediaType) || undefined;
+            }
+
+            // Get streaming sources
+            tmdbResult.streamingSources = await generateSmartStreamingLinks(
+              tmdbResult.title,
+              tmdbResult.year,
+              tmdbResult.tmdbId,
+              mediaType,
+              tmdbResult.imdbId
+            );
+
+            // Add the original platform as a streaming source if not already present
+            const platformAlreadyIncluded = tmdbResult.streamingSources.some(
+              s => s.name.toLowerCase() === platformInfo.platform.toLowerCase()
+            );
+            if (!platformAlreadyIncluded) {
+              tmdbResult.streamingSources.unshift({
+                name: platformInfo.platform,
+                logo: getStreamingServiceLogo(platformInfo.platform),
+                url: platformInfo.url,
+                type: 'subscription'
+              });
+            }
+
+            results = [tmdbResult];
+            await storeInCache(cacheHash, contentType, tmdbResult);
+
+            const duration = performance.now() - startTime;
+            console.log(`\n✅ ${platformInfo.platform.toUpperCase()} DIRECT - Completed in ${duration.toFixed(2)}ms\n`);
+            return new Response(JSON.stringify({ results }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            console.log(`[${platformInfo.platform}] ⚠️ No TMDB match, will try AI analysis`);
+            // Store the extracted title to use for AI analysis
+            input.query = extractedTitle;
+          }
+        } else {
+          console.log(`[${platformInfo.platform}] ⚠️ Could not extract title, will try AI analysis with URL`);
         }
       }
     }
