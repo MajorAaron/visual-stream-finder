@@ -120,27 +120,36 @@ const Index = () => {
   // Handle shared content when it arrives
   useEffect(() => {
     if (sharedContent) {
+      console.log('[Index] Processing shared content:', sharedContent.type);
+
       if (sharedContent.type === 'image' && sharedContent.imageBase64) {
         // Convert base64 to File object for image analysis
-        const byteCharacters = atob(sharedContent.imageBase64);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        try {
+          const byteCharacters = atob(sharedContent.imageBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: sharedContent.mimeType || 'image/jpeg' });
+          const file = new File([blob], 'shared-image.jpg', { type: sharedContent.mimeType || 'image/jpeg' });
+
+          console.log('[Index] Created file from shared image, size:', file.size);
+
+          // Process the shared image
+          handleImageUpload(file);
+        } catch (error) {
+          console.error('[Index] Error processing shared image:', error);
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: sharedContent.mimeType || 'image/jpeg' });
-        const file = new File([blob], 'shared-image.jpg', { type: sharedContent.mimeType || 'image/jpeg' });
-        
-        // Process the shared image
-        handleImageUpload(file);
         clearSharedContent();
       } else if (sharedContent.type === 'text' || sharedContent.type === 'url') {
         // Process shared text/URL
         const searchQuery = sharedContent.url || sharedContent.text || '';
         if (searchQuery) {
+          console.log('[Index] Processing shared URL/text:', searchQuery);
           handleTextSearch(searchQuery);
-          clearSharedContent();
         }
+        clearSharedContent();
       }
     }
   }, [sharedContent, clearSharedContent, handleImageUpload, handleTextSearch]);

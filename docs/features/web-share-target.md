@@ -8,7 +8,7 @@ Visual Stream Finder supports the Web Share Target API, allowing users to share 
 
 ### User Flow
 
-1. **User shares content** from another app (Photos, Safari, Chrome, etc.)
+1. **User shares content** from another app (Photos, YouTube, Safari, Chrome, etc.)
 2. **Visual Stream Finder appears** in the native share sheet
 3. **User selects the app** as the share target
 4. **App opens automatically** to the search page
@@ -24,11 +24,11 @@ Native Share Sheet
   ↓
 Service Worker (/share-target endpoint)
   ↓
-IndexedDB (for images) or Query Params (for text)
+IndexedDB (unified storage for all content types)
   ↓
-useShareHandler Hook
+Redirect to /#/search?shared=image|text
   ↓
-Navigate to /search
+useShareHandler Hook (retrieves from IndexedDB)
   ↓
 Index.tsx processes shared content
   ↓
@@ -51,9 +51,9 @@ Results displayed
 
 **Process:**
 1. Service worker receives POST request with image file
-2. Converts image to base64
-3. Stores in IndexedDB with metadata
-4. Redirects to app with `?action=shared-image`
+2. Converts image to base64 (chunked for large files)
+3. Stores in IndexedDB with metadata and timestamp
+4. Redirects to app with `/#/search?shared=image` (HashRouter compatible)
 5. useShareHandler retrieves from IndexedDB
 6. Converts back to File object
 7. Calls `handleImageUpload()` in Index.tsx
@@ -63,16 +63,21 @@ Results displayed
 
 **Supported types:**
 - Plain text (movie/TV show titles)
-- URLs (IMDb links, streaming platform URLs)
+- URLs (YouTube, IMDb, Netflix, streaming platform URLs)
 - Rich text with metadata
+
+**Android URL Handling:**
+On Android, the `url` field in the share data is often empty, and URLs come through the `text` field instead. The service worker automatically extracts URLs from the text field to handle this.
 
 **Process:**
 1. Service worker receives POST/GET request with text data
 2. Extracts title, text, and URL parameters
-3. Redirects to app with `?action=shared-text&url=...&text=...`
-4. useShareHandler parses query parameters
-5. Calls `handleTextSearch()` in Index.tsx
-6. AI-powered search begins automatically
+3. Checks text field for URLs if url field is empty (Android compatibility)
+4. Stores in IndexedDB (more reliable than query params for long URLs)
+5. Redirects to app with `/#/search?shared=text` (HashRouter compatible)
+6. useShareHandler retrieves from IndexedDB
+7. Calls `handleTextSearch()` in Index.tsx
+8. AI-powered search begins automatically
 
 ## Implementation Details
 
@@ -106,30 +111,44 @@ Location: [`public/manifest.json`](../../public/manifest.json)
 Location: [`public/service-worker.js`](../../public/service-worker.js)
 
 **Key functions:**
-- `handleSharedContent(request)` - Processes POST requests with images
-- `handleSharedText(request)` - Processes GET requests with text/URLs
-- `storeSharedImage()` - Saves images to IndexedDB
-- `getLatestSharedImage()` - Retrieves shared images
-- `clearSharedImages()` - Cleans up after processing
+- `handleSharedContent(request)` - Processes POST requests (images, text, URLs)
+- `handleSharedText(request)` - Processes GET requests (fallback for some apps)
+- `storeSharedContent(data)` - Unified storage for all content types in IndexedDB
+- `getLatestSharedContent()` - Retrieves the most recent shared content
+- `clearSharedContent()` - Cleans up after processing
+- `extractUrl(text)` - Extracts URLs from text (for Android compatibility)
+- `arrayBufferToBase64(buffer)` - Chunked conversion for large images
+
+**HashRouter Compatibility:**
+The service worker redirects use hash-based routing (`/#/search?shared=...`) to work correctly with React Router's HashRouter, which is required for GitHub Pages deployment.
+
+### Service Worker Registration
+
+Location: [`src/utils/serviceWorkerRegistration.ts`](../../src/utils/serviceWorkerRegistration.ts)
+
+**Key features:**
+- Waits for service worker to be ready before accessing content
+- Direct IndexedDB fallback if service worker controller isn't available
+- Handles race conditions during initial page load
+- Provides both new unified API and legacy compatibility
 
 ### Share Handler Hook
 
 Location: [`src/hooks/useShareHandler.ts`](../../src/hooks/useShareHandler.ts)
 
 **Responsibilities:**
-- Detects share actions via query parameters
-- Retrieves shared images from IndexedDB
-- Parses shared text and URLs
+- Detects share actions via query parameters in hash location
+- Retrieves shared content from IndexedDB
+- Parses both image and text content
 - Provides shared content to components
-- Navigates to `/search` page
+- Cleans up URLs and storage after processing
 - Shows toast notifications
-- Cleans up URLs and storage
 
 ### Search Page Integration
 
 Location: [`src/pages/Index.tsx`](../../src/pages/Index.tsx)
 
-**Key integration (lines 121-146):**
+**Key integration:**
 ```typescript
 useEffect(() => {
   if (sharedContent) {
@@ -138,7 +157,8 @@ useEffect(() => {
       handleImageUpload(file);
       clearSharedContent();
     } else if (sharedContent.type === 'text' || sharedContent.type === 'url') {
-      // Trigger text search
+      // Trigger text search (URL is prioritized over text)
+      const searchQuery = sharedContent.url || sharedContent.text || '';
       handleTextSearch(searchQuery);
       clearSharedContent();
     }
@@ -164,6 +184,16 @@ useEffect(() => {
 2. Must be accessed over HTTPS (or localhost for development)
 3. Service worker must be active
 
+### Test YouTube URL Sharing
+
+1. Open YouTube app on mobile
+2. Find a video
+3. Tap Share button
+4. Select "AI Watchlist" from share sheet
+5. App should open to search page
+6. Search should start automatically with the YouTube URL
+7. Results should display video information
+
 ### Test Image Sharing
 
 1. Open Photos app on mobile
@@ -184,13 +214,6 @@ useEffect(() => {
 6. Search should start automatically with URL/title
 7. Results should display streaming options
 
-### Test URL Sharing
-
-1. Copy a movie title or IMDb URL
-2. Use system share sheet
-3. Select "AI Watchlist"
-4. App should process the URL/text
-
 ## Debugging
 
 ### Check Service Worker Registration
@@ -206,34 +229,59 @@ navigator.serviceWorker.getRegistration().then(reg => {
 
 ```javascript
 // Open IndexedDB in DevTools
-// Database: SharedContent
-// Object Store: images
-// Check for stored shared images
+// Database: SharedContent (version 2)
+// Object Store: shared
+// Check for stored content with type, url, text, base64 fields
 ```
 
 ### Check Query Parameters
 
-When sharing, check if the URL contains:
-- `?action=shared-image` - for images
-- `?action=shared-text&url=...&text=...` - for text/URLs
-- `?action=share-error` - for errors
+When sharing, check if the URL contains (after the hash):
+- `/#/search?shared=image` - for images
+- `/#/search?shared=text` - for text/URLs
+- `/#/search?shared=error` - for errors
 
 ### Console Logs
 
-Service worker logs key events:
+Service worker logs key events with `[SW]` prefix:
 ```
-Received share: { title, text, url, hasImage }
-Shared image stored successfully
-Received text share: { title, text, url }
+[SW] Handling POST share target
+[SW] Received share: { title, text, url, hasImage }
+[SW] Extracted URL from text: https://...
+[SW] Shared content stored successfully: image|text|url
+```
+
+App logs with prefixes:
+```
+[ShareHandler] Processing share type: image|text
+[ShareHandler] Retrieved content: { type, url, text }
+[Index] Processing shared content: image|url|text
+[Index] Processing shared URL/text: https://...
 ```
 
 ## Known Limitations
 
 1. **PWA Installation Required**: App must be installed as PWA to appear in share sheet
 2. **Mobile Only**: Desktop browsers don't support Web Share Target API
-3. **File Size**: Images are limited by browser IndexedDB quotas
+3. **File Size**: Large images may take longer to convert to base64
 4. **Single File**: Only supports sharing one image at a time
 5. **Browser Support**: Limited to Chrome/Edge on Android and Safari on iOS
+
+## Architecture Notes
+
+### Why HashRouter + IndexedDB?
+
+1. **HashRouter**: Required for GitHub Pages deployment (no server-side routing)
+2. **IndexedDB for all content**: Query parameters have length limits and encoding issues with long URLs
+3. **Unified storage**: Simplifies handling of both images and text
+4. **Fallback mechanisms**: Direct IndexedDB access if service worker isn't ready
+
+### Key Design Decisions
+
+- **Store then redirect**: All shared content is stored in IndexedDB before redirecting
+- **Hash-based params**: `/#/search?shared=text` instead of `/?action=shared-text#/`
+- **URL extraction**: Automatically extract URLs from text field (Android compatibility)
+- **Chunked base64**: Large images are converted in chunks to avoid stack overflow
 
 ## Future Enhancements
 
@@ -254,4 +302,4 @@ Received text share: { title, text, url }
 
 - [Web Share Target API - MDN](https://developer.mozilla.org/en-US/docs/Web/Manifest/share_target)
 - [Web Share Target Level 2 Spec](https://w3c.github.io/web-share-target/)
-- [PWA Share Target - web.dev](https://web.dev/web-share-target/)
+- [PWA Share Target - Chrome Developers](https://developer.chrome.com/docs/capabilities/web-apis/web-share-target)

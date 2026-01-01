@@ -23,4 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
-.mcp.jsongcp-oauth.keys.json
+.mcp.json
+
+# Credentials
+gcp-oauth.keys.json
+*.keys.json

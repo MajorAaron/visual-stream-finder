@@ -1,5 +1,6 @@
 // Service Worker for AI Watchlist PWA
-const CACHE_NAME = 'ai-watchlist-v1';
+// Version 2.0 - Fixed for HashRouter compatibility
+const CACHE_NAME = 'ai-watchlist-v2';
 
 // Get the base path for GitHub Pages deployment
 const BASE_PATH = self.location.pathname.replace('/service-worker.js', '');
@@ -17,7 +18,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache');
+        console.log('[SW] Opened cache');
         return cache.addAll(urlsToCache);
       })
   );
@@ -32,7 +33,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
+            console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -47,20 +48,26 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  
-  // Handle share target endpoint
+
+  // Handle share target endpoint - check various path patterns
   const shareTargetPath = BASE_PATH + '/share-target';
-  if (request.method === 'POST' && (url.pathname === shareTargetPath || url.pathname === '/share-target')) {
+  const isShareTarget = url.pathname === shareTargetPath ||
+                        url.pathname === '/share-target' ||
+                        url.pathname.endsWith('/share-target');
+
+  if (request.method === 'POST' && isShareTarget) {
+    console.log('[SW] Handling POST share target');
     event.respondWith(handleSharedContent(request));
     return;
   }
-  
-  // Handle GET requests for share target (text/URL shares)
-  if (request.method === 'GET' && (url.pathname === shareTargetPath || url.pathname === '/share-target')) {
+
+  // Handle GET requests for share target (text/URL shares from some apps)
+  if (request.method === 'GET' && isShareTarget) {
+    console.log('[SW] Handling GET share target');
     event.respondWith(handleSharedText(request));
     return;
   }
-  
+
   // Network first, fallback to cache strategy for other requests
   event.respondWith(
     fetch(request)
@@ -69,15 +76,15 @@ self.addEventListener('fetch', (event) => {
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
-        
+
         // Clone the response for caching
         const responseToCache = response.clone();
-        
+
         caches.open(CACHE_NAME)
           .then((cache) => {
             cache.put(request, responseToCache);
           });
-        
+
         return response;
       })
       .catch(() => {
@@ -87,181 +94,302 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Handle shared images
+// URL detection regex for extracting URLs from text
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
+
+// Detect if a string contains a URL
+function extractUrl(text) {
+  if (!text) return null;
+  const matches = text.match(URL_REGEX);
+  return matches ? matches[0] : null;
+}
+
+// Handle shared content (POST - images and text/URLs)
 async function handleSharedContent(request) {
   try {
     const formData = await request.formData();
     const title = formData.get('title') || '';
     const text = formData.get('text') || '';
-    const url = formData.get('url') || '';
+    let url = formData.get('url') || '';
     const imageFile = formData.get('image');
-    
-    console.log('Received share:', { title, text, url, hasImage: !!imageFile });
-    
+
+    console.log('[SW] Received share:', { title, text, url, hasImage: !!imageFile });
+
+    // On Android, URLs often come through the 'text' field instead of 'url'
+    // Extract URL from text if url field is empty
+    if (!url && text) {
+      const extractedUrl = extractUrl(text.toString());
+      if (extractedUrl) {
+        console.log('[SW] Extracted URL from text:', extractedUrl);
+        url = extractedUrl;
+      }
+    }
+
     if (imageFile && imageFile.size > 0) {
       // Convert image to base64
       const buffer = await imageFile.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      const base64 = arrayBufferToBase64(buffer);
       const mimeType = imageFile.type || 'image/jpeg';
-      
+
       // Store in IndexedDB for retrieval by the app
-      await storeSharedImage(base64, mimeType, { title, text, url });
+      await storeSharedContent({
+        type: 'image',
+        base64,
+        mimeType,
+        title: title.toString(),
+        text: text.toString(),
+        url: url.toString(),
+        timestamp: Date.now()
+      });
 
-      // Redirect to app with share flag (useShareHandler will navigate to /search)
-      return Response.redirect(BASE_PATH + '/?action=shared-image', 303);
+      // Redirect to app with hash-based routing
+      // IMPORTANT: Use hash routing for compatibility with React HashRouter
+      return Response.redirect(BASE_PATH + '/#/search?shared=image', 303);
     } else if (url || text) {
-      // Handle text/URL share (useShareHandler will navigate to /search)
-      const params = new URLSearchParams();
-      if (url) params.set('url', url);
-      if (text) params.set('text', text);
-      if (title) params.set('title', title);
+      // Store text/URL in IndexedDB (more reliable than query params)
+      await storeSharedContent({
+        type: url ? 'url' : 'text',
+        url: url.toString(),
+        text: text.toString(),
+        title: title.toString(),
+        timestamp: Date.now()
+      });
 
-      return Response.redirect(`${BASE_PATH}/?action=shared-text&${params.toString()}`, 303);
+      return Response.redirect(BASE_PATH + '/#/search?shared=text', 303);
     }
-    
+
     // No valid content to share
-    return Response.redirect(BASE_PATH + '/?action=share-error', 303);
-    
+    console.log('[SW] No valid content in share');
+    return Response.redirect(BASE_PATH + '/#/search?shared=error', 303);
+
   } catch (error) {
-    console.error('Error handling shared content:', error);
-    return Response.redirect(BASE_PATH + '/?action=share-error', 303);
+    console.error('[SW] Error handling shared content:', error);
+    return Response.redirect(BASE_PATH + '/#/search?shared=error', 303);
   }
 }
 
-// Handle shared text/URLs (GET request)
+// Handle shared text/URLs (GET request - fallback for some apps)
 async function handleSharedText(request) {
   try {
-    const url = new URL(request.url);
-    const params = url.searchParams;
-    
+    const requestUrl = new URL(request.url);
+    const params = requestUrl.searchParams;
+
     const title = params.get('title') || '';
     const text = params.get('text') || '';
-    const sharedUrl = params.get('url') || '';
-    
-    console.log('Received text share:', { title, text, url: sharedUrl });
+    let sharedUrl = params.get('url') || '';
 
-    // Redirect to app with parameters (useShareHandler will navigate to /search)
-    const appParams = new URLSearchParams();
-    if (sharedUrl) appParams.set('url', sharedUrl);
-    if (text) appParams.set('text', text);
-    if (title) appParams.set('title', title);
-    appParams.set('action', 'shared-text');
-    
-    return Response.redirect(`${BASE_PATH}/?${appParams.toString()}`, 303);
-    
+    console.log('[SW] Received GET text share:', { title, text, url: sharedUrl });
+
+    // On Android, URLs often come through the 'text' field
+    if (!sharedUrl && text) {
+      const extractedUrl = extractUrl(text);
+      if (extractedUrl) {
+        console.log('[SW] Extracted URL from text in GET:', extractedUrl);
+        sharedUrl = extractedUrl;
+      }
+    }
+
+    if (sharedUrl || text) {
+      // Store in IndexedDB for reliable retrieval
+      await storeSharedContent({
+        type: sharedUrl ? 'url' : 'text',
+        url: sharedUrl,
+        text: text,
+        title: title,
+        timestamp: Date.now()
+      });
+
+      return Response.redirect(BASE_PATH + '/#/search?shared=text', 303);
+    }
+
+    return Response.redirect(BASE_PATH + '/#/search?shared=error', 303);
+
   } catch (error) {
-    console.error('Error handling shared text:', error);
-    return Response.redirect(BASE_PATH + '/?action=share-error', 303);
+    console.error('[SW] Error handling shared text:', error);
+    return Response.redirect(BASE_PATH + '/#/search?shared=error', 303);
   }
 }
 
-// Store shared image in IndexedDB
-async function storeSharedImage(base64, mimeType, metadata) {
+// Convert ArrayBuffer to base64 (handles large files better than String.fromCharCode)
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return btoa(binary);
+}
+
+// Store shared content in IndexedDB (unified for both images and text)
+async function storeSharedContent(data) {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('SharedContent', 1);
-    
-    request.onerror = () => reject(request.error);
-    
+    const request = indexedDB.open('SharedContent', 2);
+
+    request.onerror = () => {
+      console.error('[SW] IndexedDB open error:', request.error);
+      reject(request.error);
+    };
+
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      // Create unified store for all shared content
+      if (!db.objectStoreNames.contains('shared')) {
+        db.createObjectStore('shared', { keyPath: 'id', autoIncrement: true });
+      }
+      // Keep old store for backwards compatibility but don't use it
       if (!db.objectStoreNames.contains('images')) {
         db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
       }
     };
-    
+
     request.onsuccess = (event) => {
       const db = event.target.result;
-      const transaction = db.transaction(['images'], 'readwrite');
-      const store = transaction.objectStore('images');
-      
-      const data = {
-        base64,
-        mimeType,
-        metadata,
-        timestamp: Date.now()
-      };
-      
+      const transaction = db.transaction(['shared'], 'readwrite');
+      const store = transaction.objectStore('shared');
+
       const addRequest = store.add(data);
-      
+
       addRequest.onsuccess = () => {
-        console.log('Shared image stored successfully');
+        console.log('[SW] Shared content stored successfully:', data.type);
         resolve(addRequest.result);
       };
-      
-      addRequest.onerror = () => reject(addRequest.error);
+
+      addRequest.onerror = () => {
+        console.error('[SW] Error storing shared content:', addRequest.error);
+        reject(addRequest.error);
+      };
     };
   });
 }
 
 // Message handler for communication with the app
 self.addEventListener('message', (event) => {
-  if (event.data.type === 'GET_SHARED_IMAGE') {
-    getLatestSharedImage().then(image => {
-      event.ports[0].postMessage({ type: 'SHARED_IMAGE', data: image });
+  console.log('[SW] Received message:', event.data.type);
+
+  if (event.data.type === 'GET_SHARED_CONTENT') {
+    getLatestSharedContent().then(content => {
+      console.log('[SW] Sending shared content:', content ? content.type : 'none');
+      event.ports[0].postMessage({ type: 'SHARED_CONTENT', data: content });
+    }).catch(err => {
+      console.error('[SW] Error getting shared content:', err);
+      event.ports[0].postMessage({ type: 'SHARED_CONTENT', data: null });
     });
   }
-  
+
+  if (event.data.type === 'CLEAR_SHARED_CONTENT') {
+    clearSharedContent().then(() => {
+      console.log('[SW] Shared content cleared');
+      event.ports[0].postMessage({ type: 'CLEARED' });
+    }).catch(err => {
+      console.error('[SW] Error clearing shared content:', err);
+      event.ports[0].postMessage({ type: 'CLEARED' });
+    });
+  }
+
+  // Legacy support for old message types
+  if (event.data.type === 'GET_SHARED_IMAGE') {
+    getLatestSharedContent().then(content => {
+      if (content && content.type === 'image') {
+        event.ports[0].postMessage({
+          type: 'SHARED_IMAGE',
+          data: {
+            base64: content.base64,
+            mimeType: content.mimeType,
+            metadata: { title: content.title, text: content.text, url: content.url }
+          }
+        });
+      } else {
+        event.ports[0].postMessage({ type: 'SHARED_IMAGE', data: null });
+      }
+    });
+  }
+
   if (event.data.type === 'CLEAR_SHARED_IMAGES') {
-    clearSharedImages().then(() => {
+    clearSharedContent().then(() => {
       event.ports[0].postMessage({ type: 'CLEARED' });
     });
   }
 });
 
-// Get the latest shared image from IndexedDB
-async function getLatestSharedImage() {
+// Get the latest shared content from IndexedDB
+async function getLatestSharedContent() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('SharedContent', 1);
-    
-    request.onerror = () => reject(request.error);
-    
+    const request = indexedDB.open('SharedContent', 2);
+
+    request.onerror = () => {
+      console.error('[SW] IndexedDB open error:', request.error);
+      reject(request.error);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('shared')) {
+        db.createObjectStore('shared', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('images')) {
+        db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+
     request.onsuccess = (event) => {
       const db = event.target.result;
-      
-      if (!db.objectStoreNames.contains('images')) {
+
+      if (!db.objectStoreNames.contains('shared')) {
         resolve(null);
         return;
       }
-      
-      const transaction = db.transaction(['images'], 'readonly');
-      const store = transaction.objectStore('images');
+
+      const transaction = db.transaction(['shared'], 'readonly');
+      const store = transaction.objectStore('shared');
       const getAllRequest = store.getAll();
-      
+
       getAllRequest.onsuccess = () => {
-        const images = getAllRequest.result;
-        if (images && images.length > 0) {
-          // Return the most recent image
-          const latest = images.sort((a, b) => b.timestamp - a.timestamp)[0];
+        const items = getAllRequest.result;
+        if (items && items.length > 0) {
+          // Return the most recent content
+          const latest = items.sort((a, b) => b.timestamp - a.timestamp)[0];
           resolve(latest);
         } else {
           resolve(null);
         }
       };
-      
-      getAllRequest.onerror = () => reject(getAllRequest.error);
+
+      getAllRequest.onerror = () => {
+        console.error('[SW] Error getting shared content:', getAllRequest.error);
+        reject(getAllRequest.error);
+      };
     };
   });
 }
 
-// Clear all shared images from IndexedDB
-async function clearSharedImages() {
+// Clear all shared content from IndexedDB
+async function clearSharedContent() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('SharedContent', 1);
-    
+    const request = indexedDB.open('SharedContent', 2);
+
     request.onerror = () => reject(request.error);
-    
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('shared')) {
+        db.createObjectStore('shared', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+
     request.onsuccess = (event) => {
       const db = event.target.result;
-      
-      if (!db.objectStoreNames.contains('images')) {
+
+      if (!db.objectStoreNames.contains('shared')) {
         resolve();
         return;
       }
-      
-      const transaction = db.transaction(['images'], 'readwrite');
-      const store = transaction.objectStore('images');
+
+      const transaction = db.transaction(['shared'], 'readwrite');
+      const store = transaction.objectStore('shared');
       const clearRequest = store.clear();
-      
+
       clearRequest.onsuccess = () => resolve();
       clearRequest.onerror = () => reject(clearRequest.error);
     };
