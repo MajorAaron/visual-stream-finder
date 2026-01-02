@@ -54,22 +54,84 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(({ side = "right", className, children, ...props }, ref) => {
+  const [dragOffset, setDragOffset] = React.useState(0)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const touchStartY = React.useRef(0)
+  const contentRef = React.useRef<HTMLDivElement>(null)
+
+  const handleTouchStart = React.useCallback((e: React.TouchEvent) => {
+    if (side !== "bottom") return
+    touchStartY.current = e.touches[0].clientY
+    setIsDragging(true)
+  }, [side])
+
+  const handleTouchMove = React.useCallback((e: React.TouchEvent) => {
+    if (side !== "bottom" || !isDragging) return
+    const currentY = e.touches[0].clientY
+    const diff = currentY - touchStartY.current
+
+    // Only allow dragging down (positive diff)
+    if (diff > 0) {
+      setDragOffset(diff)
+    }
+  }, [side, isDragging])
+
+  const handleTouchEnd = React.useCallback(() => {
+    if (side !== "bottom") return
+    setIsDragging(false)
+
+    // Close if dragged down more than 100px
+    if (dragOffset > 100) {
+      // Trigger the close
+      const closeButton = contentRef.current?.querySelector('[data-radix-dialog-close]') as HTMLElement
+      closeButton?.click()
+    }
+
+    // Reset offset with animation
+    setDragOffset(0)
+  }, [side, dragOffset])
+
+  return (
+    <SheetPortal>
+      <SheetOverlay />
+      <SheetPrimitive.Content
+        ref={(node) => {
+          contentRef.current = node
+          if (typeof ref === 'function') {
+            ref(node)
+          } else if (ref) {
+            ref.current = node
+          }
+        }}
+        className={cn(sheetVariants({ side }), className)}
+        style={
+          side === "bottom"
+            ? {
+                transform: `translateY(${dragOffset}px)`,
+                transition: isDragging ? "none" : "transform 0.3s ease-out",
+              }
+            : undefined
+        }
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        {...props}
+      >
+        {side === "bottom" && (
+          <div className="flex justify-center pb-2 -mt-2">
+            <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
+          </div>
+        )}
+        {children}
+        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </SheetPrimitive.Close>
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  )
+})
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({
