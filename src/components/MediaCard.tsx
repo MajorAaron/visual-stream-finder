@@ -80,41 +80,16 @@ export function MediaCard({
       </div>
 
       {/* Content Section */}
-      <CardContent className="p-4 space-y-3">
-        {/* Title and Year */}
+      <CardContent className="p-3 space-y-2">
+        {/* Title Only */}
         <div className="cursor-pointer" onClick={onCardClick}>
-          <h3 className="font-semibold text-base line-clamp-2 mb-1 hover:text-primary transition-colors">
+          <h3 className="font-semibold text-base line-clamp-2 hover:text-primary transition-colors">
             {item.title}
           </h3>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{item.year}</span>
-            {item.runtime && (
-              <>
-                <span>•</span>
-                <span>{item.runtime}</span>
-              </>
-            )}
-            {item.rating && (
-              <>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  <span>{item.rating}</span>
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
-        {/* Genre */}
-        {item.genre && item.genre.length > 0 && (
-          <p className="text-xs text-muted-foreground line-clamp-1">
-            {item.genre.slice(0, 2).join(' • ')}
-          </p>
-        )}
-
         {/* Action Buttons */}
-        <div className="flex items-center justify-between gap-2 pt-2">
+        <div className="flex items-center justify-center gap-1">
           {/* Favorite Button */}
           {onFavorite && (
             <Button
@@ -123,14 +98,14 @@ export function MediaCard({
                 onFavorite();
               }}
               variant="ghost"
-              size="sm"
+              size="icon"
               className={cn(
-                'flex-1 h-10 flex flex-col items-center justify-center gap-0.5',
-                item.favorite ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground'
+                'h-10 w-10 rounded-full',
+                item.favorite ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground hover:text-yellow-400'
               )}
+              title="Toggle favorite"
             >
-              <Star className={cn('w-5 h-5', item.favorite && 'fill-yellow-400 text-yellow-400')} />
-              <span className="text-xs">FAV</span>
+              <Star className={cn('w-5 h-5', item.favorite && 'fill-yellow-400')} />
             </Button>
           )}
 
@@ -142,11 +117,11 @@ export function MediaCard({
                 onMarkAsWatched();
               }}
               variant="ghost"
-              size="sm"
-              className="flex-1 h-10 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-green-500"
+              size="icon"
+              className="h-10 w-10 rounded-full text-muted-foreground hover:text-green-500"
+              title="Mark as watched"
             >
               <Eye className="w-5 h-5" />
-              <span className="text-xs">SEEN</span>
             </Button>
           )}
 
@@ -157,11 +132,11 @@ export function MediaCard({
                 onMarkAsUnwatched();
               }}
               variant="ghost"
-              size="sm"
-              className="flex-1 h-10 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-blue-500"
+              size="icon"
+              className="h-10 w-10 rounded-full text-muted-foreground hover:text-blue-500"
+              title="Mark as unwatched"
             >
               <RotateCcw className="w-5 h-5" />
-              <span className="text-xs">UNSEE</span>
             </Button>
           )}
 
@@ -173,11 +148,11 @@ export function MediaCard({
                 onRemove();
               }}
               variant="ghost"
-              size="sm"
-              className="flex-1 h-10 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-destructive"
+              size="icon"
+              className="h-10 w-10 rounded-full text-muted-foreground hover:text-destructive"
+              title="Remove from list"
             >
               <Trash2 className="w-5 h-5" />
-              <span className="text-xs">REMOVE</span>
             </Button>
           )}
         </div>
