@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Star, ArrowLeft } from 'lucide-react';
@@ -7,12 +7,19 @@ import { useAuth } from '@/hooks/useAuth';
 import { MediaCard } from '@/components/MediaCard';
 import { MasonryGrid } from '@/components/MasonryGrid';
 import { WatchlistItemDetailSheet } from '@/components/WatchlistItemDetailSheet';
+import { StreamingSourceFilter } from '@/components/StreamingSourceFilter';
+import { filterByStreamingSource } from '@/utils/watchlistFilters';
 
 export default function Favorites() {
   const { user, signOut } = useAuth();
   const { favorites, loading, removeFromWatchlist, setFavorite } = useWatchlist();
   const [selectedItem, setSelectedItem] = useState<typeof favorites[0] | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<string | null>(null);
+
+  const filteredFavorites = useMemo(() => {
+    return filterByStreamingSource(favorites, selectedSource);
+  }, [favorites, selectedSource]);
 
   if (loading) {
     return (
@@ -38,7 +45,10 @@ export default function Favorites() {
               <div className="min-w-0 flex-1 sm:flex-none">
                 <h1 className="text-xl sm:text-2xl font-bold text-primary">Favorites</h1>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {favorites.length} favorited items
+                  {selectedSource 
+                    ? `${filteredFavorites.length} of ${favorites.length} items`
+                    : `${favorites.length} favorited items`
+                  }
                 </p>
               </div>
             </div>
@@ -57,6 +67,15 @@ export default function Favorites() {
               </Button>
             </div>
           </div>
+          {favorites.length > 0 && (
+            <div className="mt-3 sm:mt-0">
+              <StreamingSourceFilter
+                items={favorites}
+                selectedSource={selectedSource}
+                onSourceChange={setSelectedSource}
+              />
+            </div>
+          )}
         </div>
       </header>
 
@@ -75,9 +94,22 @@ export default function Favorites() {
               <Button>Find Titles</Button>
             </Link>
           </div>
+        ) : filteredFavorites.length === 0 ? (
+          <div className="text-center py-12 sm:py-16 px-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Star className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold mb-2">No items found</h2>
+            <p className="text-muted-foreground mb-6 text-sm sm:text-base">
+              No items available on {selectedSource}
+            </p>
+            <Button onClick={() => setSelectedSource(null)} variant="outline">
+              Clear Filter
+            </Button>
+          </div>
         ) : (
           <MasonryGrid>
-            {favorites.map((item) => (
+            {filteredFavorites.map((item) => (
               <div key={item.id} className="mb-3 sm:mb-4">
                 <MediaCard
                   item={item}

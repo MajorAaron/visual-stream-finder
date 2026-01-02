@@ -173,7 +173,17 @@ export const SearchInput = ({ onImageUpload, onTextSearch, isLoading }: SearchIn
         return;
       }
       setSearchText(trimmed);
-      toast.success('Pasted from clipboard');
+      
+      // Automatically trigger search with pasted content
+      const isUrl = trimmed.match(/^https?:\/\/.+/);
+      if (isUrl) {
+        onTextSearch(trimmed);
+        toast.success('Extracting content from URL...');
+      } else {
+        onTextSearch(trimmed);
+        toast.success('Searching for content...');
+      }
+      
       setTimeout(() => {
         if (textInputRef.current) {
           textInputRef.current.focus();

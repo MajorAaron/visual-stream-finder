@@ -117,6 +117,41 @@ const Index = () => {
     setResults([]);
   };
 
+  // Debug: Measure header alignment
+  useEffect(() => {
+    // #region agent log
+    const measureAlignment = () => {
+      const rootEl = document.getElementById('root');
+      const headerContainer = document.querySelector('header > div.max-w-7xl');
+      const titleContainer = document.querySelector('header > div.max-w-7xl > div.flex > div:first-child');
+      const h1El = document.querySelector('header h1');
+      const mainContent = document.querySelector('div.max-w-7xl:not(header div)');
+      
+      const rootStyles = rootEl ? window.getComputedStyle(rootEl) : null;
+      const headerStyles = headerContainer ? window.getComputedStyle(headerContainer as Element) : null;
+      const titleStyles = titleContainer ? window.getComputedStyle(titleContainer as Element) : null;
+      const h1Styles = h1El ? window.getComputedStyle(h1El) : null;
+      const mainStyles = mainContent ? window.getComputedStyle(mainContent as Element) : null;
+      
+      const rootRect = rootEl?.getBoundingClientRect();
+      const headerRect = headerContainer?.getBoundingClientRect();
+      const titleRect = titleContainer?.getBoundingClientRect();
+      const h1Rect = h1El?.getBoundingClientRect();
+      const mainRect = mainContent?.getBoundingClientRect();
+      
+      fetch('http://127.0.0.1:7242/ingest/ae3a10ac-da18-4189-8d8a-f23fb0ad2492',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Index.tsx:121',message:'Root element styles',data:{padding:rootStyles?.padding,margin:rootStyles?.margin,left:rootRect?.left,width:rootRect?.width},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ae3a10ac-da18-4189-8d8a-f23fb0ad2492',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Index.tsx:122',message:'Header container styles',data:{padding:headerStyles?.paddingLeft,margin:headerStyles?.marginLeft,left:headerRect?.left,width:headerRect?.width},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ae3a10ac-da18-4189-8d8a-f23fb0ad2492',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Index.tsx:123',message:'Title container styles',data:{flex:titleStyles?.flex,padding:titleStyles?.paddingLeft,margin:titleStyles?.marginLeft,left:titleRect?.left,width:titleRect?.width},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ae3a10ac-da18-4189-8d8a-f23fb0ad2492',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Index.tsx:124',message:'H1 element styles',data:{margin:h1Styles?.marginLeft,padding:h1Styles?.paddingLeft,left:h1Rect?.left,width:h1Rect?.width},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7242/ingest/ae3a10ac-da18-4189-8d8a-f23fb0ad2492',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Index.tsx:125',message:'Alignment comparison',data:{headerLeft:headerRect?.left,titleLeft:titleRect?.left,h1Left:h1Rect?.left,mainLeft:mainRect?.left,diff:headerRect && h1Rect ? h1Rect.left - headerRect.left : null},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'E'})}).catch(()=>{});
+    };
+    
+    // Measure after a short delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(measureAlignment, 100);
+    return () => clearTimeout(timeoutId);
+    // #endregion
+  }, [appState]);
+
   // Handle shared content when it arrives
   useEffect(() => {
     if (sharedContent) {
@@ -163,15 +198,13 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
       {/* Header with user info and sign out */}
       <header className="border-b bg-background/80 backdrop-blur-sm relative">
-        <div className="container mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex-1">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-primary">AI Watchlist</h1>
-                <p className="text-sm text-muted-foreground hidden sm:block">
-                  Welcome back, {user.user_metadata?.full_name || user.email}!
-                </p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-primary">AI Watchlist</h1>
+              <p className="text-sm text-muted-foreground hidden sm:block">
+                Welcome back, {user.user_metadata?.full_name || user.email}!
+              </p>
             </div>
             
             {/* Desktop Navigation */}
@@ -270,7 +303,7 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Main Content */}
         <div className="space-y-6">
           {appState === 'upload' && (
