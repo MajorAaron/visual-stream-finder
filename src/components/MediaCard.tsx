@@ -1,13 +1,14 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Star, Clock, Calendar, Trash2, RotateCcw, Eye } from 'lucide-react';
+import { Star, Trash2, RotateCcw, Eye } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const typeColors: Record<string, string> = {
-  movie: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  tv: 'bg-green-500/20 text-green-400 border-green-500/30',
-  documentary: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  youtube: 'bg-red-500/20 text-red-400 border-red-500/30',
+  movie: 'bg-blue-500/90 text-white border-0',
+  tv: 'bg-primary text-primary-foreground border-0',
+  documentary: 'bg-purple-500/90 text-white border-0',
+  youtube: 'bg-red-500/90 text-white border-0',
 };
 
 export interface MediaItem {
@@ -48,168 +49,139 @@ export function MediaCard({
   variant = 'watchlist',
 }: MediaCardProps) {
   return (
-    <Card className="overflow-hidden w-full shadow-lg hover:shadow-xl transition-shadow duration-200">
-      {/* Mobile: Horizontal card - tap to open details */}
+    <Card className="overflow-hidden bg-card border-border hover:border-primary/50 transition-all duration-200 group">
+      {/* Poster Image with Badge */}
       <div
-        className="sm:hidden cursor-pointer flex"
+        className="relative cursor-pointer overflow-hidden aspect-[2/3]"
         onClick={onCardClick}
       >
-        <div className={`flex-shrink-0 ${item.type === 'youtube' ? 'w-32' : 'w-24'} relative`}>
-          <img
-            src={item.poster || 'https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop'}
-            alt={`${item.title} poster`}
-            className={`w-full object-cover rounded-l-lg ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}
-          />
-          {item.favorite && (
-            <div className="absolute top-2 right-2">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 drop-shadow-md" />
-            </div>
+        <img
+          src={item.poster || 'https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop'}
+          alt={`${item.title} poster`}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+        />
+        
+        {/* Type Badge */}
+        <Badge
+          className={cn(
+            'absolute top-2 left-2 text-xs font-semibold px-2 py-1',
+            typeColors[item.type]
           )}
-        </div>
-        <CardContent className="flex-1 p-3 flex flex-col justify-center min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-semibold text-base line-clamp-2 flex-1">{item.title}</h3>
-            <Badge variant="outline" className={`${typeColors[item.type]} text-xs flex-shrink-0`}>
-              {item.type.toUpperCase()}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>{item.year}</span>
-            {item.rating && (
-              <div className="flex items-center gap-1">
-                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                {item.rating}/10
-              </div>
-            )}
-          </div>
-          {item.genre && item.genre.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              {item.genre.slice(0, 3).join(' · ')}
-            </p>
-          )}
-        </CardContent>
-      </div>
-
-      {/* Desktop: Vertical card */}
-      <div className="hidden sm:block">
-        <div
-          className="cursor-pointer"
-          onClick={onCardClick}
         >
-          <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'} relative`}>
-            <img
-              src={item.poster || 'https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop'}
-              alt={`${item.title} poster`}
-              className="w-full h-full object-cover transition-transform hover:scale-105"
-            />
-            {item.favorite && (
-              <div className="absolute top-2 right-2">
-                <Star className="w-5 h-5 fill-yellow-400 text-yellow-400 drop-shadow-lg" />
-              </div>
+          {item.type === 'tv' ? 'TV SERIES' : item.type.toUpperCase()}
+        </Badge>
+
+        {/* Favorite Star Indicator */}
+        {item.favorite && (
+          <div className="absolute top-2 right-2">
+            <Star className="w-5 h-5 fill-yellow-400 text-yellow-400 drop-shadow-lg" />
+          </div>
+        )}
+      </div>
+
+      {/* Content Section */}
+      <CardContent className="p-4 space-y-3">
+        {/* Title and Year */}
+        <div className="cursor-pointer" onClick={onCardClick}>
+          <h3 className="font-semibold text-base line-clamp-2 mb-1 hover:text-primary transition-colors">
+            {item.title}
+          </h3>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>{item.year}</span>
+            {item.runtime && (
+              <>
+                <span>•</span>
+                <span>{item.runtime}</span>
+              </>
             )}
-            <Badge
-              variant="outline"
-              className={`absolute top-2 left-2 ${typeColors[item.type]} text-xs backdrop-blur-sm`}
-            >
-              {item.type.toUpperCase()}
-            </Badge>
+            {item.rating && (
+              <>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                  <span>{item.rating}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <CardContent className="p-3">
-          <div className="space-y-2">
-            {/* Title and metadata */}
-            <div>
-              <h3
-                className="font-bold text-base line-clamp-2 cursor-pointer hover:text-primary transition-colors"
-                onClick={onCardClick}
-              >
-                {item.title}
-              </h3>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-1">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {item.year}
-                </div>
-                {item.runtime && (
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {item.runtime}
-                  </div>
-                )}
-                {item.rating && (
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    {item.rating}/10
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* Genre */}
+        {item.genre && item.genre.length > 0 && (
+          <p className="text-xs text-muted-foreground line-clamp-1">
+            {item.genre.slice(0, 2).join(' • ')}
+          </p>
+        )}
 
-            {/* Action buttons */}
-            <div className="flex gap-1.5 pt-1">
-              {onFavorite && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onFavorite();
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className={`flex-1 h-8 text-xs px-2 ${item.favorite ? 'text-yellow-500 hover:text-yellow-600' : ''}`}
-                >
-                  <Star className={`w-3.5 h-3.5 mr-1 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                  {item.favorite ? 'Unfav' : 'Fav'}
-                </Button>
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between gap-2 pt-2">
+          {/* Favorite Button */}
+          {onFavorite && (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onFavorite();
+              }}
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'flex-1 h-10 flex flex-col items-center justify-center gap-0.5',
+                item.favorite ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground'
               )}
+            >
+              <Star className={cn('w-5 h-5', item.favorite && 'fill-yellow-400 text-yellow-400')} />
+              <span className="text-xs">FAV</span>
+            </Button>
+          )}
 
-              {variant === 'watchlist' && onMarkAsWatched && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAsWatched();
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-8 text-xs px-2 text-green-500 hover:text-green-600"
-                >
-                  <Eye className="w-3.5 h-3.5 mr-1" />
-                  Seen
-                </Button>
-              )}
+          {/* Seen/Unsee Button */}
+          {variant === 'watchlist' && onMarkAsWatched && (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkAsWatched();
+              }}
+              variant="ghost"
+              size="sm"
+              className="flex-1 h-10 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-green-500"
+            >
+              <Eye className="w-5 h-5" />
+              <span className="text-xs">SEEN</span>
+            </Button>
+          )}
 
-              {variant === 'watched' && onMarkAsUnwatched && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMarkAsUnwatched();
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-8 text-xs px-2 text-blue-500 hover:text-blue-600"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                  Unsee
-                </Button>
-              )}
+          {variant === 'watched' && onMarkAsUnwatched && (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkAsUnwatched();
+              }}
+              variant="ghost"
+              size="sm"
+              className="flex-1 h-10 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-blue-500"
+            >
+              <RotateCcw className="w-5 h-5" />
+              <span className="text-xs">UNSEE</span>
+            </Button>
+          )}
 
-              {onRemove && (
-                <Button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove();
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs px-2 text-red-500 hover:text-red-600"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </div>
+          {/* Remove Button */}
+          {onRemove && (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
+              variant="ghost"
+              size="sm"
+              className="flex-1 h-10 flex flex-col items-center justify-center gap-0.5 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span className="text-xs">REMOVE</span>
+            </Button>
+          )}
+        </div>
+      </CardContent>
     </Card>
   );
 }

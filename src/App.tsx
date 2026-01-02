@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import { HashRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { DevIndicator } from "@/components/DevIndicator";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import { FloatingAddButton } from "@/components/FloatingAddButton";
 import { registerServiceWorker } from "@/utils/serviceWorkerRegistration";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -30,21 +30,22 @@ function App() {
           {/* Public route */}
           <Route path="/auth" element={<Auth />} />
           
-          {/* Protected routes */}
+          {/* Protected routes with AppLayout */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Watchlist />} />
-            <Route path="/search" element={<Index />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/watched" element={<Watched />} />
-            <Route path="/favorites" element={<Favorites />} />
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<Watchlist />} />
+              <Route path="/search" element={<Index />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/watchlist" element={<Watchlist />} />
+              <Route path="/watched" element={<Watched />} />
+              <Route path="/favorites" element={<Favorites />} />
+            </Route>
           </Route>
           
           <Route path="*" element={<NotFound />} />
         </Routes>
         <DevIndicator />
         <PWAInstallPrompt />
-        <FloatingAddButton />
       </Router>
     </QueryClientProvider>
   );
