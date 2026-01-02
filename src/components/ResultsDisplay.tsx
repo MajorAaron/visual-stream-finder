@@ -159,9 +159,9 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
       <div className="grid gap-4 md:gap-6">
         {sortedResults.map((content, index) => (
           <Card key={index} className="result-card overflow-hidden">
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               {/* Poster Image */}
-              <div className={`flex-shrink-0 ${content.type === 'youtube' ? 'w-32 sm:w-48 aspect-video' : 'w-24 sm:w-32 aspect-[2/3]'}`}>
+              <div className={`flex-shrink-0 ${content.type === 'youtube' ? 'w-full md:w-48 aspect-video' : 'w-full md:w-32 aspect-[2/3]'}`}>
                 <img
                   src={content.poster}
                   alt={content.title}
