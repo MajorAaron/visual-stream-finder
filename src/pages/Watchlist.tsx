@@ -1,46 +1,18 @@
-import { Link, Navigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ExternalLink, Star, Clock, Calendar, ArrowLeft, Trash2 } from 'lucide-react';
+import { Star, ArrowLeft } from 'lucide-react';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { useAuth } from '@/hooks/useAuth';
-import { StreamingIcon } from '@/components/StreamingIcon';
-
-const typeColors = {
-  movie: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  tv: "bg-green-500/20 text-green-400 border-green-500/30",
-  documentary: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  youtube: "bg-red-500/20 text-red-400 border-red-500/30"
-};
-
-
-
-// Known dark logos that need light backgrounds for visibility
-const darkLogos = [
-  'apple tv',
-  'hbo max', 
-  'hbo',
-  'netflix',
-  'amazon prime video',
-  'disney+',
-  'peacock',
-  'paramount+',
-  'showtime',
-  'starz'
-];
-
-const isDarkLogo = (serviceName: string) => {
-  return darkLogos.some(darkService => 
-    serviceName.toLowerCase().includes(darkService.toLowerCase())
-  );
-};
+import { MediaCard } from '@/components/MediaCard';
+import { MasonryGrid } from '@/components/MasonryGrid';
+import { WatchlistItemDetailSheet } from '@/components/WatchlistItemDetailSheet';
 
 export default function Watchlist() {
   const { user, signOut } = useAuth();
   const { watchlist, loading, removeFromWatchlist, markAsWatched, setFavorite } = useWatchlist();
-
-  // Auth is now handled by ProtectedRoute wrapper
+  const [selectedItem, setSelectedItem] = useState<typeof watchlist[0] | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (loading) {
     return (
@@ -53,38 +25,34 @@ export default function Watchlist() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
+      <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               <Link to="/search">
                 <Button variant="ghost" size="sm">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Search
+                  Search
                 </Button>
               </Link>
               <div className="min-w-0 flex-1 sm:flex-none">
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary">My Watchlist</h1>
-                <p className="text-sm text-muted-foreground">
+                <h1 className="text-xl sm:text-2xl font-bold text-primary">My Watchlist</h1>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   {watchlist.length} saved items
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
               <Link to="/watched">
-                <Button variant="outline" size="sm">
-                  Watched
-                </Button>
+                <Button variant="outline" size="sm">Watched</Button>
               </Link>
               <Link to="/favorites">
-                <Button variant="outline" size="sm">
-                  Favorites
-                </Button>
+                <Button variant="outline" size="sm">Favorites</Button>
               </Link>
-              <p className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-none">
+              <span className="hidden sm:inline text-sm text-muted-foreground truncate max-w-[120px]">
                 {user?.user_metadata?.full_name || user?.email}
-              </p>
-              <Button onClick={signOut} variant="outline" size="sm" className="flex-shrink-0">
+              </span>
+              <Button onClick={signOut} variant="outline" size="sm">
                 Sign Out
               </Button>
             </div>
@@ -93,7 +61,7 @@ export default function Watchlist() {
       </header>
 
       {/* Main content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {watchlist.length === 0 ? (
           <div className="text-center py-12 sm:py-16 px-4">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -104,354 +72,40 @@ export default function Watchlist() {
               Start discovering movies and TV shows to build your personal watchlist
             </p>
             <Link to="/search">
-              <Button>
-                Start Analyzing Images
-              </Button>
+              <Button>Start Analyzing Images</Button>
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 sm:gap-6">
+          <MasonryGrid>
             {watchlist.map((item) => (
-              <Card key={item.id} className="overflow-hidden w-full shadow-lg hover:shadow-xl transition-shadow duration-200">
-                {/* Desktop: Horizontal layout */}
-                <div className="hidden lg:flex">
-                  <div className={`flex-shrink-0 w-48 ${item.type === 'youtube' ? 'aspect-video' : ''}`}>
-                    <img
-                      src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
-                      alt={`${item.title} poster`}
-                      className="w-full h-full object-cover"
-                      style={{ minHeight: '288px', maxHeight: '288px' }}
-                    />
-                  </div>
-                  <CardContent className="flex-1 p-6">
-                    <div className="flex h-full">
-                      {/* Left: Main content */}
-                      <div className="flex-1 pr-6">
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                          <div>
-                            <h3 className="font-bold text-2xl mb-2">{item.title}</h3>
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                {item.year}
-                              </div>
-                              {item.runtime && (
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-4 h-4" />
-                                  {item.runtime}
-                                </div>
-                              )}
-                              {item.rating && (
-                                <div className="flex items-center gap-1">
-                                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                  {item.rating}/10
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <Badge variant="outline" className={`${typeColors[item.type]} flex-shrink-0`}>
-                            {item.type.toUpperCase()}
-                          </Badge>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {item.genre?.map((g) => (
-                            <Badge key={g} variant="secondary" className="text-xs">
-                              {g}
-                            </Badge>
-                          ))}
-                        </div>
-
-                        {item.plot && (
-                          <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed mb-4">{item.plot}</p>
-                        )}
-
-                        {/* Streaming sources inline for desktop */}
-                        {item.type !== 'youtube' && item.streaming_sources && item.streaming_sources.length > 0 && (
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-muted-foreground">Available on:</span>
-                            <div className="flex gap-2">
-                              {(() => {
-                                const groupedSources = item.streaming_sources.reduce((acc: any, source: any) => {
-                                  if (!acc[source.name]) {
-                                    acc[source.name] = { name: source.name, url: source.url };
-                                  }
-                                  return acc;
-                                }, {});
-                                return Object.values(groupedSources).slice(0, 5).map((service: any, index: number) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => window.open(service.url, '_blank')}
-                                    className="p-2 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                                    title={service.name}
-                                  >
-                                    <StreamingIcon
-                                      serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
-                                      serviceName={service.name}
-                                      className="w-6 h-6"
-                                    />
-                                  </button>
-                                ));
-                              })()}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right: Actions */}
-                      <div className="flex flex-col gap-2 w-44 border-l pl-6">
-                        <Button
-                          onClick={() => setFavorite(item.title, item.year, !item.favorite)}
-                          variant="outline"
-                          size="sm"
-                          className={`w-full justify-start ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''}`}
-                        >
-                          <Star className={`w-4 h-4 mr-2 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                          {item.favorite ? 'Unfavorite' : 'Favorite'}
-                        </Button>
-                        <Button
-                          onClick={() => markAsWatched(item.title, item.year)}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start text-green-500 hover:text-green-600 hover:bg-green-50"
-                        >
-                          <Star className="w-4 h-4 mr-2" />
-                          Watched
-                        </Button>
-                        <Button
-                          onClick={() => removeFromWatchlist(item.title, item.year)}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Remove
-                        </Button>
-                        {item.confidence && (
-                          <div className="text-xs text-muted-foreground pt-2 mt-auto">
-                            Confidence: {Math.round(item.confidence * 100)}%
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </div>
-
-                {/* Mobile: Vertical layout */}
-                <div className="lg:hidden">
-                  <div className={`overflow-hidden ${item.type === 'youtube' ? 'aspect-video' : 'aspect-[2/3]'}`}>
-                    <img
-                      src={item.poster || "https://images.unsplash.com/photo-1489599904821-6ef46474ebc3?w=300&h=450&fit=crop"}
-                      alt={`${item.title} poster`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <CardContent className="p-2 sm:p-4">
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-base sm:text-xl line-clamp-2 mb-2">{item.title}</h3>
-                          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              {item.year}
-                            </div>
-                            {item.runtime && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {item.runtime}
-                              </div>
-                            )}
-                            {item.rating && (
-                              <div className="flex items-center gap-1">
-                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                                {item.rating}/10
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <Badge variant="outline" className={`${typeColors[item.type]} flex-shrink-0 text-xs`}>
-                          {item.type.toUpperCase()}
-                        </Badge>
-                      </div>
-
-                      <div className="hidden sm:flex flex-wrap gap-2">
-                        {item.genre?.map((g) => (
-                          <Badge key={g} variant="secondary" className="text-xs">
-                            {g}
-                          </Badge>
-                        ))}
-                      </div>
-
-                      {item.plot && (
-                        <p className="hidden sm:block text-sm text-muted-foreground line-clamp-3 leading-relaxed">{item.plot}</p>
-                      )}
-
-                    {/* Streaming Sources / YouTube Link */}
-                    <div className="hidden sm:block space-y-3">
-                      {item.type === 'youtube' || (item as any).youtube_url ? (
-                        <>
-                          <h4 className="font-semibold text-sm">Watch on YouTube:</h4>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-auto p-2 justify-start w-full"
-                            onClick={() => window.open((item as any).youtube_url || `https://youtube.com/search?q=${encodeURIComponent(item.title)}`, '_blank')}
-                          >
-                            <div className="flex items-center gap-2 w-full">
-                              <div className="w-5 h-5 bg-red-500 rounded flex items-center justify-center flex-shrink-0">
-                                <span className="text-white font-bold text-xs">YT</span>
-                              </div>
-                              <div className="flex-1 text-left min-w-0">
-                                <div className="font-medium text-xs truncate">YouTube</div>
-                                {(item as any).channel_name && (
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {(item as any).channel_name}
-                                  </div>
-                                )}
-                              </div>
-                              <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                            </div>
-                          </Button>
-                        </>
-                      ) : item.streaming_sources && item.streaming_sources.length > 0 ? (
-                        <>
-                          <h4 className="font-semibold text-sm">Available on:</h4>
-                          <div className="flex flex-col gap-2">
-                            {(() => {
-                              // Group streaming sources by service name
-                              const groupedSources = item.streaming_sources.reduce((acc: any, source: any) => {
-                                if (!acc[source.name]) {
-                                  acc[source.name] = {
-                                    name: source.name,
-                                    url: source.url, // Use the first URL found
-                                    types: []
-                                  };
-                                }
-                                if (!acc[source.name].types.find((t: any) => t.type === source.type)) {
-                                  acc[source.name].types.push({
-                                    type: source.type,
-                                    price: source.price
-                                  });
-                                }
-                                return acc;
-                              }, {});
-
-                              return Object.values(groupedSources).slice(0, 4).map((service: any, index: number) => {
-                                console.log(`Watchlist - ${service.name}: ${service.url}`);
-                                return (
-                                  <Button
-                                    key={index}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-auto p-2 justify-start"
-                                    onClick={() => {
-                                      console.log(`Opening ${service.name} link: ${service.url}`);
-                                      window.open(service.url, '_blank');
-                                    }}
-                                  >
-                                  <div className="flex items-center gap-2 w-full">
-                                    <StreamingIcon 
-                                      serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
-                                      serviceName={service.name}
-                                      className="w-5 h-5 flex-shrink-0"
-                                    />
-                                    <div className="flex-1 text-left min-w-0">
-                                      <div className="font-medium text-xs truncate">{service.name}</div>
-                                    </div>
-                                    <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                                  </div>
-                                </Button>
-                                );
-                              });
-                            })()}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center py-4 border border-dashed rounded-lg">
-                          <p className="text-sm text-muted-foreground mb-1">No streaming sources found</p>
-                          <p className="text-sm text-muted-foreground">
-                            Release Date: {item.year}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Mobile quick actions */}
-                    <div className="flex gap-2 sm:hidden">
-                      <Button
-                        onClick={() => setFavorite(item.title, item.year, !item.favorite)}
-                        variant="outline"
-                        size="sm"
-                        className={`flex-1 h-8 text-xs ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''}`}
-                      >
-                        <Star className={`w-4 h-4 mr-1 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                        {item.favorite ? 'Unfavorite' : 'Favorite'}
-                      </Button>
-                      <Button
-                        onClick={() => markAsWatched(item.title, item.year)}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs"
-                      >
-                        <Star className="w-4 h-4 mr-1" /> Watched
-                      </Button>
-                      <Button
-                        onClick={() => removeFromWatchlist(item.title, item.year)}
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" /> Remove
-                      </Button>
-                    </div>
-
-                    {/* Favorite button */}
-                    <Button
-                      onClick={() => setFavorite(item.title, item.year, !item.favorite)}
-                      variant="outline"
-                      size="sm"
-                      className={`hidden sm:block w-full ${item.favorite ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50' : ''} h-10 sm:h-9 mb-2`}
-                    >
-                      <Star className={`w-4 h-4 mr-2 ${item.favorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
-                      {item.favorite ? 'Unfavorite' : 'Favorite'}
-                    </Button>
-
-                    {/* Mark as Watched button */}
-                    <Button
-                      onClick={() => markAsWatched(item.title, item.year)}
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:block w-full text-green-500 hover:text-green-600 hover:bg-green-50 h-10 sm:h-9 mb-2"
-                    >
-                      <Star className="w-4 h-4 mr-2" />
-                      Mark as Watched
-                    </Button>
-
-                    {/* Remove button */}
-                    <Button
-                      onClick={() => removeFromWatchlist(item.title, item.year)}
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:block w-full text-red-500 hover:text-red-600 hover:bg-red-50 h-10 sm:h-9"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Remove from Watchlist
-                    </Button>
-
-                    {item.confidence && (
-                      <div className="text-xs text-muted-foreground pt-2 border-t">
-                        Confidence: {Math.round(item.confidence * 100)}%
-                      </div>
-                    )}
-                    </div>
-                  </CardContent>
-                </div>
-              </Card>
+              <div key={item.id} className="mb-3 sm:mb-4">
+                <MediaCard
+                  item={item}
+                  variant="watchlist"
+                  onCardClick={() => {
+                    setSelectedItem(item);
+                    setSheetOpen(true);
+                  }}
+                  onFavorite={() => setFavorite(item.title, item.year, !item.favorite)}
+                  onMarkAsWatched={() => markAsWatched(item.title, item.year)}
+                  onRemove={() => removeFromWatchlist(item.title, item.year)}
+                />
+              </div>
             ))}
-          </div>
+          </MasonryGrid>
         )}
       </div>
+
+      {/* Detail sheet */}
+      <WatchlistItemDetailSheet
+        item={selectedItem}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onFavorite={setFavorite}
+        onMarkAsWatched={markAsWatched}
+        onRemove={removeFromWatchlist}
+        variant="watchlist"
+      />
     </div>
   );
 }

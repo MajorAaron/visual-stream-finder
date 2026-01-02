@@ -161,7 +161,7 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
           <Card key={index} className="result-card overflow-hidden">
             <div className="flex gap-4">
               {/* Poster Image */}
-              <div className="flex-shrink-0 w-24 sm:w-32">
+              <div className={`flex-shrink-0 ${content.type === 'youtube' ? 'w-32 sm:w-48 aspect-video' : 'w-24 sm:w-32 aspect-[2/3]'}`}>
                 <img
                   src={content.poster}
                   alt={content.title}
@@ -172,9 +172,20 @@ export const ResultsDisplay = ({ results, onNewSearch }: ResultsDisplayProps) =>
               {/* Main Content */}
               <div className="flex-1 p-4 space-y-3">
                 <div className="flex justify-between items-start gap-2">
-                  <h3 className="text-lg sm:text-xl font-bold leading-tight">
-                    {content.title}
-                  </h3>
+                  {content.type === 'youtube' && content.youtubeUrl ? (
+                    <a
+                      href={content.youtubeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lg sm:text-xl font-bold leading-tight hover:underline text-primary"
+                    >
+                      {content.title}
+                    </a>
+                  ) : (
+                    <h3 className="text-lg sm:text-xl font-bold leading-tight">
+                      {content.title}
+                    </h3>
+                  )}
                   <Badge className={`flex-shrink-0 ${typeColors[content.type]}`}>
                     {content.type.toUpperCase()}
                   </Badge>
