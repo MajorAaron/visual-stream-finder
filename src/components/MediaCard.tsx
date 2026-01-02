@@ -2,7 +2,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, Clock, Calendar, Trash2, RotateCcw, Eye } from 'lucide-react';
-import { StreamingIcon } from '@/components/StreamingIcon';
 
 const typeColors: Record<string, string> = {
   movie: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
@@ -48,14 +47,6 @@ export function MediaCard({
   onRemove,
   variant = 'watchlist',
 }: MediaCardProps) {
-  // Group streaming sources
-  const groupedSources = item.streaming_sources?.reduce((acc: any, source: any) => {
-    if (!acc[source.name]) {
-      acc[source.name] = { name: source.name, url: source.url };
-    }
-    return acc;
-  }, {}) || {};
-
   return (
     <Card className="overflow-hidden w-full shadow-lg hover:shadow-xl transition-shadow duration-200">
       {/* Mobile: Horizontal card - tap to open details */}
@@ -154,29 +145,6 @@ export function MediaCard({
                 )}
               </div>
             </div>
-
-            {/* Streaming sources - compact icons */}
-            {item.streaming_sources && item.streaming_sources.length > 0 && (
-              <div className="flex gap-1.5 flex-wrap">
-                {Object.values(groupedSources).slice(0, 4).map((service: any, index: number) => (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(service.url, '_blank');
-                    }}
-                    className="p-1.5 rounded-md bg-secondary/50 hover:bg-secondary transition-colors"
-                    title={service.name}
-                  >
-                    <StreamingIcon
-                      serviceId={service.name.toLowerCase().replace(/[^a-z0-9]/g, '')}
-                      serviceName={service.name}
-                      className="w-4 h-4"
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
 
             {/* Action buttons */}
             <div className="flex gap-1.5 pt-1">
